@@ -1,0 +1,607 @@
+/* ========== PP NEUE MONTREAL ========== */
+@font-face {
+  font-family: 'PP Neue Montreal';
+  src: url('./fonts/ppneuemontreal-thin.woff2') format('woff2');
+  font-weight: 200;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'PP Neue Montreal';
+  src: url('./fonts/ppneuemontreal-book.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'PP Neue Montreal';
+  src: url('./fonts/ppneuemontreal-italic.woff2') format('woff2');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'PP Neue Montreal';
+  src: url('./fonts/ppneuemontreal-medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'PP Neue Montreal';
+  src: url('./fonts/ppneuemontreal-semibolditalic.woff2') format('woff2');
+  font-weight: 600;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'PP Neue Montreal';
+  src: url('./fonts/ppneuemontreal-bold.woff2') format('woff2'); /* <-- harmonise le nom de fichier */
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ========== PP FORMULA (au moins la variante que tu utilises) ========== */
+@font-face {
+  font-family: 'PP Formula';
+  src: url('./fonts/PPFormula-CondensedLightItalic.woff2') format('woff2');
+  font-weight: 300;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* (Optionnel mais recommandé) si tu utilises aussi une version normale : */
+@font-face {
+  font-family: 'PP Formula';
+  src: url('/fonts/PPFormula-CondensedLight.woff2') format('woff2');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Formula';
+  src: url('/fonts/PPFormula-CondensedLightItalic.woff2') format('woff2');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+html, body {
+  font-family: 'PP Neue Montreal', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-synthesis: none; /* évite faux bold/italic */
+}
+
+body {
+    width: 100vw;
+    height: 100vh;
+    position: relative;
+}
+h1, nav {
+  font-family: 'PP Formula', 'PP Neue Montreal', 'Formula', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* La couleur de la nav = la couleur de texte du thème */
+.view nav {
+  color: var(--fg);
+  transition: color .6s ease;
+}
+.view nav a,
+.view nav button,
+.back_to_home,
+.arrow_back {
+  color: inherit;
+  
+}
+
+
+.arrow_back {
+  transition: margin-right 0.2s ease;
+}
+
+.arrow_bavk:hover {
+  margin-right: 0.5vw;
+}
+
+
+/* Le “rail” garde 2 écrans de hauteur, on translate Y pour simuler le scroll */
+#app {
+  position: relative;
+  height: 100vh;
+  overflow: hidden;
+}
+.app-rail {
+  position: absolute;
+  inset: 0;
+  will-change: transform;
+}
+.view {
+  height: 100vh; /* chaque vue = plein écran */
+  width: 100%;
+}
+
+/* Place la vue projet sous la home, on la révèle par translation du rail */
+.view--home { position: relative; }
+.view--project { position: relative; }
+
+/* Slider projet : même look & feel que le slider home */
+.sliders_project {
+  height: 35vh;
+  overflow: hidden;
+  position: relative;
+  background: #fff;
+  border-top: 2px solid #fff;
+  border-bottom: 2px solid #fff;
+}
+.project_track {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  will-change: transform;
+}
+.sliders_project .slide,
+.project_track .slide {
+  flex: 0 0 30.3vw;
+  height: 100%;
+  display: block;
+  overflow: hidden;
+  position: relative;
+}
+.sliders_project .slide img,
+.project_track .slide img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scale(1.02);
+}
+
+/* Sous le slider projet */
+.project_cta {
+  padding: 1.2vw 5vw 0;   /* même left/right que .container */
+  margin-bottom: 1.2vw;   /* espace avec le slider */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'PP Neue Montreal';
+  font-weight: 700;
+}
+
+/* Bouton de base */
+/* CTA suit le thème (texte + bord) */
+.btn.view_site{
+  display:inline-flex;
+  align-items:center;
+  color: var(--fg);                 /* ← hérite du thème */
+  background: transparent;          /* fond transparent pour suivre la page */
+  text-transform:uppercase;
+  letter-spacing:.12em;
+  font-weight:600;
+  font-size:.9rem;
+  overflow:hidden;
+  position:relative;
+  width: 10vw;
+}
+
+/* La piste garde la couleur courante */
+.btn.view_site .marquee_track{ display:flex; align-items:center; white-space:nowrap; will-change: transform; color: inherit; }
+.btn.view_site .marquee_item{ flex:0 0 auto; padding-right:.6ch; }
+.btn.view_site:hover{ filter: brightness(1.1); }
+
+/* Le wrapper CTA ne force pas une couleur */
+.project_cta{
+  color: inherit;         /* ← au lieu de #000 */
+  text-transform: uppercase;
+  padding: 0;
+  background-color: transparent;
+}
+
+
+/* Accessibilité : pas d’animation si l’utilisateur la réduit */
+@media (prefers-reduced-motion: reduce){
+  .btn.view_site .marquee_track{ transform:none !important; }
+}
+
+
+/* Les 2 paragraphes sur la page projet */
+.project_desc { 
+display: flex; }
+
+
+.project_p1 {
+    width: 20vw;
+    margin-right: 2vw;
+}
+
+.project_p2 {
+    width: 20vw;
+    margin-right: 2vw;
+}
+
+
+
+
+/* Transition du rail (déjà prêt côté layout) */
+.app-rail { will-change: transform; }
+
+/* (optionnel) léger fade-in des images projet */
+.project_track .slide { opacity: 0; transform: translateY(12px); }
+
+
+
+
+/* --- RESET CSS DE BASE --- */
+
+/* Supprime les marges et paddings par défaut */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Supprime la décoration de texte sur les liens */
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+/* Supprime les puces des listes */
+ul, ol {
+  list-style: none;
+}
+
+/* Réinitialise le style des images */
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Supprime les styles par défaut des boutons et inputs */
+button, input, textarea, select {
+  font: inherit;
+  background: none;
+  border: none;
+  outline: none;
+}
+
+/* Définit une base pour le HTML et le body */
+html, body {
+  height: 100%;
+  width: 100%;
+  font-family: sans-serif;
+  background-color: #fff;
+  color: #000;
+}
+
+/* Optionnel : uniformise les titres */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: inherit;
+  font-size: inherit;
+}
+
+
+h1 {
+    font-family: "Formula";
+  font-weight: 300;
+  font-size: 16vw;
+  color: #fff;
+  text-transform: uppercase;
+  line-height: 100%;
+  letter-spacing: -0.2vw;
+}
+
+p {
+    font-family: "PP Neue Montreal";
+    font-weight: 400;                /* Book/Regular */
+    font-style: normal;
+    font-size: 1vw;
+    color: #fff;
+}
+
+/* NAV */
+
+nav {
+  font-weight: 300;
+  font-style: italic;
+  width: 100vw;
+  display: flex;
+  justify-content: flex-end;
+  position: fixed;
+  /*color: #fff;*/
+  text-transform: uppercase;
+  font-size: 1.2vw;
+  padding: 1.5vw 3vw;
+  z-index: 9999;
+}
+
+.back_to_home {
+    /*color: #fff;*/
+    text-transform: uppercase;
+    cursor: pointer;
+}
+
+nav a {
+  transition: margin-right .3s ease ;
+
+}
+
+nav a:hover {
+  margin-right: .5vw;
+}
+
+.container{
+  --bg: #845351;   /* fond par défaut */
+  --fg: #ffffff;   /* texte par défaut */
+  background-color: var(--bg);
+  color: var(--fg);   /* <-- garde cette ligne ! */
+  padding: 3vw 5vw;
+  height: 65vh;
+  transition: background-color .6s ease, color .6s ease; /* ajoute la transition de couleur */
+}
+.container * { color: inherit; } /* les enfants suivent bien */
+
+
+.container h1{
+  /* font etc. gardés, MAIS pas de color fixe */
+  text-transform: uppercase;
+}
+
+.container p{
+  /* pas de color fixe ici non plus */
+}
+
+.container *{ color: inherit; }
+
+.sub_txt {
+    width: 22vw;
+}
+
+/* --- Worl circle --- */
+
+.works_circle {
+    width: 6vw;                /* ajuste la taille à ta convenance */
+  height: auto;
+  display: block;
+  transform-origin: 50% 50%;
+  animation: spin 12s linear infinite;
+  will-change: transform;
+  pointer-events: none;   
+    position: absolute;
+    z-index: 11;
+    bottom: 30vh;
+    left: 50vw;
+}
+
+
+@keyframes spin{
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* Pause au survol (si tu veux) */
+.works_circle:hover{
+  animation-play-state: paused;
+}
+
+/* Respecte les préférences d’accessibilité */
+@media (prefers-reduced-motion: reduce){
+  .works_circle{ animation: none; }
+}
+
+
+
+/* --- Slider --- */
+.sliders_works {
+  height: 35vh;
+  border-top: 2px solid #fff;
+  border-bottom: 2px solid #fff;                 /* le reste après tes 65vh de .container */
+  overflow: hidden;
+  position: relative;
+  background: #fff;         /* contraste avec tes textes blancs */
+  z-index: 10;
+  position: relative;
+}
+
+.slides_track {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  gap: 2px;                   /* gap entre images */
+  will-change: transform;
+  transform: translate3d(0,0,0);
+}
+
+/* Ciblage des vignettes
+   Objectif: 3 images visibles + ~17% de la 4e (sur viewport ~1728px)
+   100vw = 3 * W + 2 * gap + 2 * padding-lr (mais on ignore le padding pour la proportion de peek)
+   Avec gap = 2vw -> W ≈ (100 - 2*gap) / 3.17 = (100 - 4)/3.17 ≈ 30.3vw
+*/
+.slide {
+  flex: 0 0 30.3vw;          /* largeur “figma → vw”, calculée pour le peek de ~17% */
+  height: 100%;
+  display: block;
+  overflow: hidden;
+  position: relative;
+}
+
+.slide img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;          /* coupe proprement si besoin */
+  display: block;
+  transform: scale(1.02);     /* tiny upscale pour éviter les bords lors du pan */
+}
+
+/* (Optionnel) jolis bords + feedback hover */
+.slide::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.slide:hover img {
+  transform: scale(1.05);
+  transition: transform 0.5s ease;
+}
+
+.slide { cursor: pointer; }
+.slide:focus { outline: none; }
+.slide:focus-visible { outline: none; }
+
+.project_cta {
+    color: #000000;
+    text-transform: uppercase;
+    padding: 0;
+    background-color: transparent;
+}
+
+
+/* La section home a une couleur par défaut et une transition lisse */
+.view--home {  
+   position: relative; 
+  --fg: #fff;
+   background-color: #845351;          /* ta couleur initiale */
+  transition: background-color 2.6s ease;  /* lissage au hover */
+}
+
+/* La section project peut aussi animer sa couleur */
+.view--project {
+  transition: background-color 2.6s ease;
+}
+
+/* Les containers restent transparents */
+.view--home .container,
+.view--project .container { background: transparent; }
+
+.fx-layer{
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: visible;
+  z-index: 5; /* si les sprites passent derrière partout, monte à 3 */
+}
+
+/* Sprite */
+.fx-sprite{
+  position: absolute;
+  will-change: transform, opacity;
+  user-select: none;
+  -webkit-user-drag: none;
+  transform-origin: 50% 50%;
+  max-width: 22vw;   /* limite pour grands écrans (ajuste si besoin) */
+}
+
+.view .container {
+  position: relative;
+  z-index: 0;
+}
+
+/* CONTACT */
+/* ===== CONTACT DRAWER ===== */
+.contact-scrim{
+  position: fixed;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 10000;
+}
+
+.contact-panel{
+  position: fixed;
+  top: 0;
+  right: 0;
+  height: 100dvh;
+  width: min(50vw, 700px);
+  max-width: 100%;
+  background: #F4E8E2;
+  color: #845351;
+  transform: translateX(100%);
+  will-change: transform;
+  z-index: 10001;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  border-left: 2px solid #fff;
+}
+
+.contact-panel__header{
+  display: flex;
+  align-items: center;
+  justify-content: end;
+  gap: .5rem;
+  padding: 5% 5%;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+
+.contact-panel__content{
+  padding: 1rem 1.25rem 2rem;
+  overflow: auto;
+}
+
+.contact-close{
+  appearance:none;
+  background:transparent;
+  border:0;
+  color:inherit;
+  font-size:1.125rem;
+  line-height:1;
+  cursor:pointer;
+}
+
+.contact_container {
+  padding: 5%;
+  display: flex;
+  flex-direction: column;
+  align-items: right;
+  justify-content: end;
+  position: relative;
+}
+
+.contact_txt {
+  color: #845351;
+  font-family: 'PP Neue Montreal';
+  font-style: italic;
+  text-align: right;
+  font-size: 2em;
+  margin-top: 15%;
+}
+
+.envoyer_contact {
+  color: #845351;
+  font-family: 'PP Neue Montreal';
+  font-weight: 700;
+  text-align: right;
+  font-size: 2em;
+  margin-top: 5%;
+  text-decoration: underline;
+}
+
+.contact-close {
+  color: #845351;
+  font-family: 'PP Neue Montreal';
+  font-weight: 700;
+  text-align: right;
+  font-size: 2em;
+}
+
+.insta {
+  color: #845351;
+  font-family: 'PP Neue Montreal';
+  font-weight: 700;
+  text-align: right;
+  font-size: 1em;
+  text-transform: uppercase;
+  position: absolute;
+  bottom: -120%;
+  right: 5%;
+
+}
+
+@media (prefers-reduced-motion: reduce){
+  .contact-scrim{ transition:none !important; }
+}
+
