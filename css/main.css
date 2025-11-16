@@ -1,3 +1,7 @@
+:root {
+  --cursor-color: #000;
+}
+
 /* ========== PP NEUE MONTREAL ========== */
 @font-face {
   font-family: 'PP Neue Montreal';
@@ -75,13 +79,43 @@ html, body {
   font-synthesis: none; /* évite faux bold/italic */
 }
 
-body {
-    width: 100vw;
-    height: 100vh;
-    position: relative;
-}
+
 h1, nav {
   font-family: 'PP Formula', 'PP Neue Montreal', 'Formula', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* On cache le curseur normal */
+
+
+/* Sur mobile / tablette (pointer grossier), on remet le comportement normal */
+
+
+/* Notre petit cercle */
+.custom-cursor {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 12px;
+  height: 12px;
+  border-radius: 6px;
+  background: var(--cursor-color);
+  pointer-events: none;
+  z-index: 99999;
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  transition:
+    width 0.1s ease-out,
+    height 0.1s ease-out,
+    border-radius 0.1s ease-out;
+}
+
+
+/* Optionnel : sur mobile, on garde le curseur normal / rien */
+@media (pointer: coarse) {
+  body {
+    cursor: auto;
+  }
+  
 }
 
 /* La couleur de la nav = la couleur de texte du thème */
@@ -604,4 +638,24 @@ nav a:hover {
 @media (prefers-reduced-motion: reduce){
   .contact-scrim{ transition:none !important; }
 }
+
+/* === CURSEUR GLOBAL === */
+
+/* Desktop / souris fine : on vire complètement le curseur natif */
+@media (pointer: fine) {
+  * {
+    cursor: none !important;
+  }
+}
+
+/* Mobile / tablette : on remet le comportement normal et on masque le cursor custom */
+@media (pointer: coarse) {
+  * {
+    cursor: auto !important;
+  }
+  .custom-cursor {
+    display: none !important;
+  }
+}
+
 

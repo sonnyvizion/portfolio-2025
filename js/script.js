@@ -359,20 +359,26 @@ window.addEventListener('load', () => {
 
   // Thème + FX avec délégation AU NIVEAU DU SLIDER (sans désactiver le pan)
   function enableHoverTheme(slides, targetContainerEl, targetSectionEl = homeView) {
-    if (!slides.length || !targetContainerEl || !homeSlider) return;
+  if (!slides.length || !targetContainerEl || !homeSlider) return;
 
-    const cs = getComputedStyle(targetContainerEl);
-    const baseBG = cs.getPropertyValue('--bg').trim() || cs.backgroundColor;
-    const baseFG = cs.getPropertyValue('--fg').trim() || cs.color;
+  const cs = getComputedStyle(targetContainerEl);
+  const baseBG = cs.getPropertyValue('--bg').trim() || cs.backgroundColor;
+  const baseFG = cs.getPropertyValue('--fg').trim() || cs.color;
 
-    const setTheme = (bg, fg) => {
-      targetContainerEl.style.setProperty('--bg', bg);
-      targetContainerEl.style.setProperty('--fg', fg);
-      if (targetSectionEl) {
-        targetSectionEl.style.backgroundColor = bg;
-        targetSectionEl.style.setProperty('--fg', fg);
-      }
-    };
+  // 👉 couleur du curseur au chargement (home par défaut)
+  document.documentElement.style.setProperty('--cursor-color', baseFG);
+
+  const setTheme = (bg, fg) => {
+    targetContainerEl.style.setProperty('--bg', bg);
+    targetContainerEl.style.setProperty('--fg', fg);
+    if (targetSectionEl) {
+      targetSectionEl.style.backgroundColor = bg;
+      targetSectionEl.style.setProperty('--fg', fg);
+    }
+    // 👉 à chaque changement de thème on aligne le curseur
+    document.documentElement.style.setProperty('--cursor-color', fg);
+  };
+
 
     const applyFromSlide = (slide) => {
       const bg = slide.dataset.color || baseBG;
@@ -486,6 +492,20 @@ window.addEventListener('load', () => {
         opacity: 1, y: 0, duration: 0.5, stagger: 0.06, delay: 0.05, ease: "power2.out"
       });
     }
+
+    if (heroProject) {
+  const bg = data.color || getComputedStyle(heroProject).getPropertyValue('--bg').trim();
+  const fg = (data.fg && data.fg.trim()) || autoContrast(bg);
+  heroProject.style.setProperty('--bg', bg);
+  heroProject.style.setProperty('--fg', fg);
+  projectView.style.setProperty('--fg', fg);
+
+  // 👉 curseur suit la couleur du projet
+  document.documentElement.style.setProperty('--cursor-color', fg);
+
+  gsap.to(projectView, { backgroundColor: bg, duration: 0.6, ease: "power2.out" });
+}
+
 
     const btn = ensureProjectCTA(projectSliderWrap);
     if (btn) btn.href = (data.url && data.url !== '') ? data.url : '#';
@@ -773,6 +793,77 @@ window.addEventListener('load', () => {
   }
 })();
 
+document.addEventListener('DOMContentLoaded', () => {
+  const cursor = document.querySelector('.custom-cursor');
+  if (!cursor) return;
 
+  let lastX = window.innerWidth / 2;
+  let lastY = window.innerHeight / 2;
+  let currentX = lastX;
+  let currentY = lastY;
+  let lastTime = performance.now();
 
+  let targetStretch = 1;
+  let currentStretch = 1;
 
+  let targetAngle = 0;
+  let currentAngle = 0;
+
+  const baseW = 12;     // largeur au repos
+  const baseH = 12;     // hauteur au repos
+  const maxStretch = 3; // largeur max relative
+  const speedForMax = 1.2;
+
+  function onMouseMove(e) {
+    cursor.style.opacity = '1';
+
+    const now = performance.now();
+    const dt = now - lastTime || 16;
+
+    const dx = e.clientX - lastX;
+    const dy = e.clientY - lastY;
+
+    lastTime = now;
+    lastX = e.clientX;
+    lastY = e.clientY;
+
+    const dist = Math.hypot(dx, dy);
+    const speed = dist / dt;
+
+    const t = Math.min(speed / speedForMax, 1);
+    targetStretch = 1 + (maxStretch - 1) * t;
+
+    // angle du mouvement en degrés
+    if (dist > 0.01) {
+      targetAngle = Math.atan2(dy, dx) * (180 / Math.PI);
+    }
+
+    currentX = e.clientX;
+    currentY = e.clientY;
+  }
+
+  function animate() {
+    const lerp = (a, b, f) => a + (b - a) * f;
+
+    currentStretch = lerp(currentStretch, targetStretch, 0.15);
+    currentAngle = lerp(currentAngle, targetAngle, 0.25);
+
+    const width = baseW * currentStretch;
+    const height = baseH;
+
+    cursor.style.width = `${width}px`;
+    cursor.style.height = `${height}px`;
+    cursor.style.borderRadius = `${height / 2}px`;
+
+    const translate = `translate(${currentX}px, ${currentY}px)`;
+    const center = `translate(-50%, -50%)`;
+    const rotate = `rotate(${currentAngle}deg)`;
+
+    cursor.style.transform = `${translate} ${center} ${rotate}`;
+
+    requestAnimationFrame(animate);
+  }
+
+  window.addEventListener('mousemove', onMouseMove);
+  requestAnimationFrame(animate);
+});
