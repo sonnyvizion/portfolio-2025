@@ -20,6 +20,10 @@
   const projectDesc       = projectView.querySelector('.project_desc');
   const projectSliderWrap = projectView.querySelector('.sliders_project');
 
+  // Lightbox (overlay plein écran)
+  const lightbox        = document.querySelector('.lightbox');
+  const lightboxContent = lightbox?.querySelector('.lightbox__content');
+
   const homeBaseBG    = getComputedStyle(homeView).backgroundColor;
   const projectBaseBG = getComputedStyle(projectView).backgroundColor;
 
@@ -122,105 +126,135 @@
   }
 
   // Effet "rougail"
-  // Effet "rougail" — B & C calqués sur A, avec petits offsets
-function playFxRougail(images){
-  const srcs = images.slice(0, 3);
-  if (!srcs.length) return gsap.timeline();
+  function playFxRougail(images){
+    const srcs = images.slice(0, 3);
+    if (!srcs.length) return gsap.timeline();
 
-  // même ease pour tous (doux et ciné)
-  const tl = gsap.timeline({ defaults:{ ease: "expo.out" } });
+    const tl = gsap.timeline({ defaults:{ ease: "expo.out" } });
 
-  const layerRect  = fxLayer.getBoundingClientRect();
-  const sliderRect = homeSlider.getBoundingClientRect();
-  const vw = layerRect.width / 100;
+    const layerRect  = fxLayer.getBoundingClientRect();
+    const sliderRect = homeSlider.getBoundingClientRect();
+    const vw = layerRect.width / 100;
 
-  // Trajectoire de base (sprite A)
-  const startBelowY  = sliderRect.bottom - layerRect.top + 260;
-  const endAboveY    = sliderRect.top    - layerRect.top - 340;
+    const startBelowY  = sliderRect.bottom - layerRect.top + 260;
+    const endAboveY    = sliderRect.top    - layerRect.top - 340;
 
-  // X de référence = centre du slider
-  const baseX = sliderRect.left - layerRect.left + sliderRect.width * 0.55;
+    const baseX = sliderRect.left - layerRect.left + sliderRect.width * 0.55;
 
-  // Tailles (garde tes proportions)
-  const sizesVW = [85, 8, 85];
+    const sizesVW = [85, 8, 85];
 
-  // Offsets et timings par sprite (calqués sur A)
-  // dx en pixels (on utilise vw pour rester responsive)
-  const cfg = [
-    //    wVW,    dx,           dY start, dY end, rot0, s0,  s1,  dur,  delay
-    { w:sizesVW[0], dx:  0*vw,  dy0:   0,  dy1:   0,  r0:-6, s0:.95, s1:1.00, dur:2.00, del:0.50 }, // A (référence)
-    { w:sizesVW[1], dx: -8*vw,  dy0:-10,  dy1:-30,  r0:-4, s0:.93, s1:1.00, dur:2.05, del:0.92 }, // B (un peu à gauche + un peu plus haut)
-    { w:sizesVW[2], dx:  19*vw,  dy0:-15,  dy1:-40,  r0: 56, s0:.93, s1:1.00, dur:2.10, del:1.04 }, // C (un peu à droite + encore un peu plus haut)
-  ];
+    const cfg = [
+      { w:sizesVW[0], dx:  0*vw,  dy0:   0,  dy1:   0,  r0:-6, s0:.95, s1:1.00, dur:2.00, del:0.50 },
+      { w:sizesVW[1], dx: -8*vw,  dy0:-10,  dy1:-30,  r0:-4, s0:.93, s1:1.00, dur:2.05, del:0.92 },
+      { w:sizesVW[2], dx: 19*vw,  dy0:-15,  dy1:-40,  r0: 56, s0:.93, s1:1.00, dur:2.10, del:1.04 },
+    ];
 
-  // Créateur + anim
-  function addSprite(src, {w, dx, dy0, dy1, r0, s0, s1, dur, del}){
-    const el = document.createElement('img');
-    el.className = 'fx-sprite';
-    el.src = src;
-    el.style.width = w + 'vw';
-    fxLayer.appendChild(el);
-    currentSprites.push(el);
+    function addSprite(src, {w, dx, dy0, dy1, r0, s0, s1, dur, del}){
+      const el = document.createElement('img');
+      el.className = 'fx-sprite';
+      el.src = src;
+      el.style.width = w + 'vw';
+      fxLayer.appendChild(el);
+      currentSprites.push(el);
 
-    // État initial : même logique que A, mais décalée
-    gsap.set(el, {
-      x: baseX + dx,
-      y: startBelowY + dy0,
-      opacity: 0,
-      rotation: r0,
-      scale: s0
-    });
+      gsap.set(el, {
+        x: baseX + dx,
+        y: startBelowY + dy0,
+        opacity: 0,
+        rotation: r0,
+        scale: s0
+      });
 
-    // Trajectoire : essentiellement verticale (comme A) + offsets
-    tl.to(el, {
-      x: baseX + dx,                 // même X (avec décalage), trajectoire “calquée”
-      y: endAboveY + dy1,            // monte au même endroit, un peu plus haut si dy1 < 0
-      opacity: 1,
-      rotation: 0,
-      scale: s1,
-      duration: dur
-    }, del);
+      tl.to(el, {
+        x: baseX + dx,
+        y: endAboveY + dy1,
+        opacity: 1,
+        rotation: 0,
+        scale: s1,
+        duration: dur
+      }, del);
+    }
+
+    srcs.forEach((src, i) => addSprite(src, cfg[i]));
+    return tl;
   }
 
-  // A, B, C
-  srcs.forEach((src, i) => addSprite(src, cfg[i]));
-
-  return tl;
-}
-
-
-  // Effet "cards"
+  // Effet "cards" (2 cartes only, trajectoires config)
   function playFxCards(images, count){
+    if (typeof gsap === "undefined" || !fxLayer || !homeSlider) {
+      return gsap.timeline();
+    }
+
     const tl = gsap.timeline({ defaults:{ ease: "power3.out" } });
-    const rect = fxLayer.getBoundingClientRect();
-    const cx = rect.width / 2;
-    const baseY = rect.height * 0.72;
 
-    const spread = 40;
-    const startRot = -spread/2;
+    const layerRect  = fxLayer.getBoundingClientRect();
+    const sliderRect = homeSlider.getBoundingClientRect();
 
-    for (let i = 0; i < count; i++){
+    const cx = sliderRect.left - layerRect.left + sliderRect.width / 2;
+
+    const cardConfigs = [
+      {
+        offsetX: -40,
+        startOffset: 80,
+        endOffset: -440,
+        duration: 2.2,
+        scaleStart: 0.85,
+        scaleEnd: 1
+      },
+      {
+        offsetX: 220,
+        startOffset: 110,
+        endOffset: -410,
+        duration: 2.75,
+        scaleStart: 0.5,
+        scaleEnd: 0.5
+      }
+    ];
+
+    const maxCards = 2;
+    const cards = Math.min(
+      maxCards,
+      count || maxCards,
+      (images && images.length) || 0
+    );
+
+    if (!cards) return tl;
+
+    for (let i = 0; i < cards; i++){
+      const cfg = cardConfigs[i] || cardConfigs[cardConfigs.length - 1];
       const src = images[i % images.length];
+
       const img = document.createElement('img');
       img.className = 'fx-sprite';
       img.src = src;
       fxLayer.appendChild(img);
       currentSprites.push(img);
 
-      const angle = startRot + (spread/(Math.max(1, count-1))) * i;
-      const radius = rand(40, 120);
-      const x = cx + rand(-80, 80);
-      const y = baseY;
+      const startY = sliderRect.bottom - layerRect.top + cfg.startOffset;
+      const endY   = sliderRect.top   - layerRect.top + cfg.endOffset;
 
-      gsap.set(img, { x, y, rotation: angle * 0.6, opacity: 0, scale: 0.7 });
-      tl.to(img, { y: y - radius, rotation: angle, opacity: 1, scale: 1, duration: rand(0.5, 0.8) }, i * 0.07);
+      gsap.set(img, {
+        x: cx + cfg.offsetX,
+        y: startY,
+        opacity: 0,
+        scale: cfg.scaleStart ?? 0.85,
+        rotation: 0
+      });
+
+      tl.to(img, {
+        y: endY,
+        opacity: 1,
+        scale: cfg.scaleEnd ?? 1,
+        duration: cfg.duration
+      }, i * 0.12);
     }
+
     return tl;
   }
 
   function buildFx(slide){
-    const type = (slide.dataset.fx || '').toLowerCase();
-    const imgs = (slide.dataset.fxImages || '').split('|').map(s => s.trim()).filter(Boolean);
+    const type  = (slide.dataset.fx || '').toLowerCase();
+    const imgs  = (slide.dataset.fxImages || '').split('|').map(s => s.trim()).filter(Boolean);
     const count = Number(slide.dataset.fxCount || (type === 'rougail' ? 9 : 6));
     if (!type || !imgs.length) return null;
 
@@ -228,157 +262,143 @@ function playFxRougail(images){
 
     switch (type){
       case 'rougail': return () => playFxRougail(imgs);
-      case 'cards'  : return () => playFxCards(imgs, count);
-      default       : return null;
+      case 'cards' :  return () => playFxCards(imgs, count);
+      default:        return null;
     }
   }
 
-  // Lance un effet — attend un frame pour stabiliser les rects
-let _fxSwitchToken = 0; // pour annuler une transition si l'utilisateur bouge vite
+  let _fxSwitchToken = 0;
 
-function playEffectForSlide(slide, parentSection){
-  ensureFxLayer(parentSection);
-  const switchToken = ++_fxSwitchToken;
+  function clearEffect(force = false, leaveMs = 600) {
+    return new Promise((resolve) => {
+      const sprites = currentSprites.slice();
+      currentSprites = [];
 
-  // 1) ranger l'effet courant en douceur (700 ms)
-  clearEffect(false, 700).then(() => {
-    // si un nouveau hover est arrivé entre-temps, on abandonne
-    if (switchToken !== _fxSwitchToken) return;
+      if (currentTL) {
+        currentTL.kill();
+        currentTL = null;
+      }
 
-    // 2) attendre 2 frames pour des rects stables
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        const layerRect  = fxLayer.getBoundingClientRect();
-        const sliderRect = homeSlider.getBoundingClientRect();
-        if (!layerRect.width || !sliderRect.width) return;
+      if (force || !sprites.length || leaveMs <= 0) {
+        sprites.forEach(el => el.remove());
+        resolve();
+        return;
+      }
 
-        const make = buildFx(slide);
-        if (!make) return;
-
-        currentTL = make(); // nouveau FX
+      gsap.to(sprites, {
+        y: '+=40',
+        opacity: 0,
+        duration: leaveMs / 1000,
+        stagger: 0.03,
+        ease: 'power2.inOut',
+        onComplete() {
+          sprites.forEach(el => el.remove());
+          resolve();
+        }
       });
     });
-  });
-}
+  }
 
+  function playEffectForSlide(slide, parentSection){
+    ensureFxLayer(parentSection);
+    const switchToken = ++_fxSwitchToken;
 
+    clearEffect(false, 700).then(() => {
+      if (switchToken !== _fxSwitchToken) return;
 
-function clearEffect(force = false, leaveMs = 600) {
-  return new Promise((resolve) => {
-    const cleanup = () => {
-      currentSprites.forEach(el => el.remove());
-      currentSprites = [];
-      resolve();
-    };
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          const layerRect  = fxLayer.getBoundingClientRect();
+          const sliderRect = homeSlider.getBoundingClientRect();
+          if (!layerRect.width || !sliderRect.width) return;
 
-    if (!currentTL) { cleanup(); return; }
+          const make = buildFx(slide);
+          if (!make) return;
 
-    if (force) {
-      currentTL.kill();
-      currentTL = null;
-      cleanup();
-      return;
-    }
-
-    // Sortie douce: reverse visible sur ≈ leaveMs
-    const desired = Math.max(0.001, leaveMs / 1000);
-    const elapsed = Math.max(0, currentTL.time());
-    const speed   = elapsed > 0 ? (elapsed / desired) : 1;
-
-    currentTL.timeScale(speed);
-    currentTL.eventCallback("onReverseComplete", () => {
-      currentTL = null;
-      cleanup();
+          currentTL = make();
+        });
+      });
     });
-    currentTL.reverse();
-  });
-}
-
-
-
-
-// ====== Init comportements ======
-
-// 1) Pan: ne l'initialise qu'une seule fois
-const homePanCtl = enableMousePan(homeSlider, homeTrack);
-
-// 2) Thème + FX (hover) — ok
-enableHoverTheme(homeSlides, heroHome, homeView);
-
-// 3) Clic slide = ouvrir projet
-homeSlides.forEach(slide => {
-  slide.addEventListener('click', e => {
-    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
-    e.preventDefault();
-    goToProjectFromSlide(slide);
-  });
-});
-
-// 4) Bouton retour
-backBtn?.addEventListener('click', backToHome);
-
-// 5) Back/forward navigateur
-window.addEventListener('popstate', () => {
-  const isHome = location.pathname === '/' || location.pathname === '';
-  if (isHome) {
-    projectView.hidden = true;
-    gsap.set(appRail, { yPercent: 0 });
-    return;
-  }
-  const target = [...homeSlides].find(s => s.getAttribute('href') === location.pathname);
-  if (target) {
-    fillProjectView(parseSlideData(target));
-    projectView.hidden = false;
-    gsap.set(appRail, { yPercent: -100 });
-    enableMousePan($('.sliders_project', projectView), projectTrack);
-  } else {
-    projectView.hidden = false;
-    gsap.set(appRail, { yPercent: -100 });
   }
 
-  const btn = projectView.querySelector('.btn.view_site');
-  if (btn) {
-    if (window._initCTAMarquee && !btn._marqueeInit) window._initCTAMarquee(btn);
-    else btn._marqueeRecalc && btn._marqueeRecalc();
-  }
-});
+  // ===== LIGHTBOX PROJET (image + vidéo) =====
+  function showLightbox() {
+    if (!lightbox || !lightboxContent) return;
+    lightbox.hidden = false;
+    lightbox.classList.add('is-open');
 
-// 6) Post-load: sécurise les mesures (fonts/images) avant de jouer des FX
-window.addEventListener('load', () => {
-  // “Réveille” le layout pour éviter les rects à 0 au premier hover
-  forcePaint(homeSlider);
-  forcePaint(document.body);
-
-  // (Optionnel) si tu veux, déclenche un hover “virtuel” sur la 1re slide pour fixer le thème
-  // const first = homeSlides[0];
-  // if (first) {
-  //   const ev = new PointerEvent('pointerover', { bubbles: true });
-  //   first.dispatchEvent(ev);
-  // }
-});
-
-  // Thème + FX avec délégation AU NIVEAU DU SLIDER (sans désactiver le pan)
-  function enableHoverTheme(slides, targetContainerEl, targetSectionEl = homeView) {
-  if (!slides.length || !targetContainerEl || !homeSlider) return;
-
-  const cs = getComputedStyle(targetContainerEl);
-  const baseBG = cs.getPropertyValue('--bg').trim() || cs.backgroundColor;
-  const baseFG = cs.getPropertyValue('--fg').trim() || cs.color;
-
-  // 👉 couleur du curseur au chargement (home par défaut)
-  document.documentElement.style.setProperty('--cursor-color', baseFG);
-
-  const setTheme = (bg, fg) => {
-    targetContainerEl.style.setProperty('--bg', bg);
-    targetContainerEl.style.setProperty('--fg', fg);
-    if (targetSectionEl) {
-      targetSectionEl.style.backgroundColor = bg;
-      targetSectionEl.style.setProperty('--fg', fg);
+    if (typeof gsap !== 'undefined') {
+      gsap.fromTo(lightboxContent,
+        { scale: 0.95, opacity: 0 },
+        { scale: 1, opacity: 1, duration: 0.25, ease: 'power2.out' }
+      );
     }
-    // 👉 à chaque changement de thème on aligne le curseur
-    document.documentElement.style.setProperty('--cursor-color', fg);
-  };
+  }
 
+  function closeLightbox() {
+    if (!lightbox || !lightboxContent) return;
+
+    const vid = lightboxContent.querySelector('video');
+    if (vid) vid.pause();
+
+    lightbox.classList.remove('is-open');
+    lightbox.hidden = true;
+    lightboxContent.innerHTML = '';
+  }
+
+  function openLightboxImage(src, alt = '') {
+    if (!lightbox || !lightboxContent) return;
+
+    lightboxContent.innerHTML = '';
+    const img = document.createElement('img');
+    img.className = 'lightbox__media';
+    img.src = src;
+    img.alt = alt || '';
+    lightboxContent.appendChild(img);
+
+    showLightbox();
+  }
+
+  function openLightboxVideo(src) {
+    if (!lightbox || !lightboxContent) return;
+
+    lightboxContent.innerHTML = '';
+    const video = document.createElement('video');
+    video.className = 'lightbox__media';
+    video.autoplay = true;
+    video.muted = true;
+    video.loop = true;
+    video.playsInline = true;
+
+    const source = document.createElement('source');
+    source.src = src;
+    source.type = 'video/mp4';
+
+    video.appendChild(source);
+    lightboxContent.appendChild(video);
+
+    showLightbox();
+  }
+
+  // ===== Thème + FX au hover du slider home =====
+  function enableHoverTheme(slides, targetContainerEl, targetSectionEl = homeView) {
+    if (!slides.length || !targetContainerEl || !homeSlider) return;
+
+    const cs = getComputedStyle(targetContainerEl);
+    const baseBG = cs.getPropertyValue('--bg').trim() || cs.backgroundColor;
+    const baseFG = cs.getPropertyValue('--fg').trim() || cs.color;
+
+    document.documentElement.style.setProperty('--cursor-color', baseFG);
+
+    const setTheme = (bg, fg) => {
+      targetContainerEl.style.setProperty('--bg', bg);
+      targetContainerEl.style.setProperty('--fg', fg);
+      if (targetSectionEl) {
+        targetSectionEl.style.backgroundColor = bg;
+        targetSectionEl.style.setProperty('--fg', fg);
+      }
+      document.documentElement.style.setProperty('--cursor-color', fg);
+    };
 
     const applyFromSlide = (slide) => {
       const bg = slide.dataset.color || baseBG;
@@ -398,15 +418,11 @@ window.addEventListener('load', () => {
     });
 
     homeSlider.addEventListener('pointerleave', () => {
-  currentSlide = null;
-  setTheme(baseBG, baseFG);
-  clearEffect(false, 900); // sortie lente quand on sort du slider
-});
+      currentSlide = null;
+      setTheme(baseBG, baseFG);
+      clearEffect(false, 900);
+    });
 
-
-
-
-    // Accessibilité clavier
     slides.forEach(s => {
       s.addEventListener('focusin', () => {
         currentSlide = s;
@@ -420,14 +436,36 @@ window.addEventListener('load', () => {
     });
   }
 
-  // Construit les items images pour le slider projet
-  function buildProjectSlides(images, altBase = 'project image') {
-    return images.map(src =>
-      `<a class="slide" href="#" tabindex="-1"><img src="${src.trim()}" alt="${altBase}"></a>`
-    ).join('');
+  // Construit les items images/vidéos pour le slider projet
+  function buildProjectSlides(mediaList, altBase = 'project media') {
+    return mediaList.map(src => {
+      const trimmed = src.trim().toLowerCase();
+
+      const isVideo =
+        trimmed.endsWith('.mp4') ||
+        trimmed.endsWith('.webm') ||
+        trimmed.endsWith('.mov') ||
+        trimmed.includes('video');
+
+      if (isVideo) {
+        return `
+          <a class="slide" href="#" tabindex="-1">
+            <video class="project-video" autoplay muted loop playsinline>
+              <source src="${src.trim()}" type="video/mp4">
+            </video>
+          </a>
+        `;
+      }
+
+      return `
+        <a class="slide" href="#" tabindex="-1">
+          <img src="${src.trim()}" alt="${altBase}">
+        </a>
+      `;
+    }).join('');
   }
 
-  // Crée le bouton "View site" sous le slider projet (une seule fois)
+  // Crée le bouton "View site" sous le slider projet
   function ensureProjectCTA(anchorEl) {
     if (!anchorEl) return null;
     let ctaWrap = projectView.querySelector('.project_cta');
@@ -467,56 +505,54 @@ window.addEventListener('load', () => {
     return { title, color, fg, href, url, images, p1, p2 };
   }
 
-  // Remplit la vue projet + thème
-  function fillProjectView(data) {
-    if (projectTitle) projectTitle.textContent = data.title || '—';
-    if (projectDesc) {
-      const p1 = data.p1 ? `<p class="project_p1">${data.p1}</p>` : '';
-      const p2 = data.p2 ? `<p class="project_p2">${data.p2}</p>` : '';
-      projectDesc.innerHTML = p1 + p2;
-    }
+  // Remplit la vue projet + thème (SANS transition animée de couleur)
+function fillProjectView(data) {
+  if (projectTitle) projectTitle.textContent = data.title || '—';
 
-    if (heroProject) {
-      const bg = data.color || getComputedStyle(heroProject).getPropertyValue('--bg').trim();
-      const fg = (data.fg && data.fg.trim()) || autoContrast(bg);
-      heroProject.style.setProperty('--bg', bg);
-      heroProject.style.setProperty('--fg', fg);
-      projectView.style.setProperty('--fg', fg);
-      gsap.to(projectView, { backgroundColor: bg, duration: 0.6, ease: "power2.out" });
-    }
+  if (projectDesc) {
+    const p1 = data.p1 ? `<p class="project_p1">${data.p1}</p>` : '';
+    const p2 = data.p2 ? `<p class="project_p2">${data.p2}</p>` : '';
+    projectDesc.innerHTML = p1 + p2;
+  }
 
-    if (projectTrack) {
-      projectTrack.innerHTML = buildProjectSlides(data.images, `${data.title} — image`);
-      gsap.set(projectTrack.querySelectorAll('.slide'), { opacity: 0, y: 12 });
-      gsap.to(projectTrack.querySelectorAll('.slide'), {
-        opacity: 1, y: 0, duration: 0.5, stagger: 0.06, delay: 0.05, ease: "power2.out"
-      });
-    }
+  if (heroProject) {
+    const bg = data.color || getComputedStyle(heroProject).getPropertyValue('--bg').trim();
+    const fg = (data.fg && data.fg.trim()) || autoContrast(bg);
 
-    if (heroProject) {
-  const bg = data.color || getComputedStyle(heroProject).getPropertyValue('--bg').trim();
-  const fg = (data.fg && data.fg.trim()) || autoContrast(bg);
-  heroProject.style.setProperty('--bg', bg);
-  heroProject.style.setProperty('--fg', fg);
-  projectView.style.setProperty('--fg', fg);
+    // on pose directement les couleurs, sans gsap.to
+    heroProject.style.setProperty('--bg', bg);
+    heroProject.style.setProperty('--fg', fg);
+    projectView.style.setProperty('--fg', fg);
+    projectView.style.backgroundColor = bg;
 
-  // 👉 curseur suit la couleur du projet
-  document.documentElement.style.setProperty('--cursor-color', fg);
+    // curseur suit la couleur du projet
+    document.documentElement.style.setProperty('--cursor-color', fg);
+  }
 
-  gsap.to(projectView, { backgroundColor: bg, duration: 0.6, ease: "power2.out" });
+  if (projectTrack) {
+    projectTrack.innerHTML = buildProjectSlides(data.images, `${data.title} — image`);
+    gsap.set(projectTrack.querySelectorAll('.slide'), { opacity: 0, y: 12 });
+    gsap.to(projectTrack.querySelectorAll('.slide'), {
+      opacity: 1,
+      y: 0,
+      duration: 0.5,
+      stagger: 0.06,
+      delay: 0.05,
+      ease: "power2.out"
+    });
+  }
+
+  const btn = ensureProjectCTA(projectSliderWrap);
+  if (btn) btn.href = (data.url && data.url !== '') ? data.url : '#';
 }
 
-
-    const btn = ensureProjectCTA(projectSliderWrap);
-    if (btn) btn.href = (data.url && data.url !== '') ? data.url : '#';
-  }
 
   // Animation vers la vue projet
   async function goToProjectFromSlide(slideEl) {
     const data = parseSlideData(slideEl);
     fillProjectView(data);
 
-    clearEffect(true); // nettoie la couche FX
+    clearEffect(true);
 
     projectView.hidden = false;
 
@@ -551,13 +587,17 @@ window.addEventListener('load', () => {
     history.pushState({ view: 'home' }, '', '/');
   }
 
+  // ===== Init comportements =====
+
   // Init état sections
   homeView.style.backgroundColor    = homeBaseBG;
   projectView.style.backgroundColor = projectBaseBG;
 
-  // Lancer comportements
-  enableMousePan(homeSlider, homeTrack);        // pan actif
-  enableHoverTheme(homeSlides, heroHome, homeView); // thème + FX
+  // Pan home
+  const homePanCtl = enableMousePan(homeSlider, homeTrack);
+
+  // Thème + FX
+  enableHoverTheme(homeSlides, heroHome, homeView);
 
   // Clic slide = ouvrir projet
   homeSlides.forEach(slide => {
@@ -570,6 +610,42 @@ window.addEventListener('load', () => {
 
   // Bouton retour
   backBtn?.addEventListener('click', backToHome);
+
+  // Clic sur image/vidéo dans le slider projet = lightbox
+  if (projectTrack && lightbox && lightboxContent) {
+    projectTrack.addEventListener('click', (e) => {
+      const img = e.target.closest('.slide img');
+      const vid = e.target.closest('.slide video');
+
+      if (img) {
+        e.preventDefault();
+        openLightboxImage(img.src, img.alt || '');
+        return;
+      }
+
+      if (vid) {
+        e.preventDefault();
+        const src = vid.currentSrc || vid.src || (vid.querySelector('source')?.src) || '';
+        if (src) openLightboxVideo(src);
+      }
+    });
+  }
+
+  // fermer en cliquant sur le fond sombre
+  if (lightbox) {
+    lightbox.addEventListener('click', (e) => {
+      if (e.target === lightbox || e.target.classList.contains('lightbox__backdrop')) {
+        closeLightbox();
+      }
+    });
+  }
+
+  // fermer avec Échap
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeLightbox();
+    }
+  });
 
   // Back/forward navigateur
   window.addEventListener('popstate', () => {
@@ -596,83 +672,14 @@ window.addEventListener('load', () => {
       else btn._marqueeRecalc && btn._marqueeRecalc();
     }
   });
+
+  // Sécurise les mesures au load
+  window.addEventListener('load', () => {
+    forcePaint(homeSlider);
+    forcePaint(document.body);
+  });
+
 })();
-
-// === CTA "View site" : marquee =====
-(() => {
-  if (typeof gsap === "undefined") { console.warn("GSAP manquant."); return; }
-
-  const debounce = (fn, wait=150) => { let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), wait); }; };
-
-  function initCTA(btn) {
-    if (!btn || btn._marqueeInit) return;
-    btn._marqueeInit = true;
-
-    const baseText = (btn.getAttribute('aria-label') || btn.textContent || 'VIEW SITE').toUpperCase();
-    const sep = ' — ';
-    btn.textContent = '';
-    const track = document.createElement('span');
-    track.className = 'marquee_track';
-    btn.appendChild(track);
-
-    const makeItem = () => {
-      const el = document.createElement('span');
-      el.className = 'marquee_item';
-      el.textContent = baseText + sep;
-      return el;
-    };
-
-    function fillTrack() {
-      track.innerHTML = '';
-      track.appendChild(makeItem());
-      while (track.scrollWidth < btn.clientWidth * 3) {
-        track.appendChild(makeItem());
-      }
-      track.innerHTML += track.innerHTML;
-    }
-
-    let pos = 0;
-    let speed = Number(btn.dataset.speed || 90);
-    let distance;
-    let running = true;
-    let slowFactor = 1;
-
-    function recalc() {
-      fillTrack();
-      distance = track.scrollWidth / 2;
-      pos = (pos % -distance) || 0;
-      gsap.set(track, { x: pos });
-    }
-
-    requestAnimationFrame(() => requestAnimationFrame(recalc));
-
-    const tick = (time, deltaMs) => {
-      if (!running || !distance) return;
-      const delta = (deltaMs || 16.7) / 1000;
-      pos -= speed * slowFactor * delta;
-      if (pos <= -distance) pos += distance;
-      gsap.set(track, { x: pos });
-    };
-    gsap.ticker.add(tick);
-
-    const slow = () => { slowFactor = 0.25; };
-    const norm = () => { slowFactor = 1; };
-    btn.addEventListener('mouseenter', slow);
-    btn.addEventListener('mouseleave', norm);
-    btn.addEventListener('focusin', slow);
-    btn.addEventListener('focusout', norm);
-
-    const onResize = debounce(recalc, 150);
-    window.addEventListener('resize', onResize);
-
-    btn._marqueeRecalc  = recalc;
-    btn._marqueeDestroy = () => { running = false; gsap.ticker.remove(tick); window.removeEventListener('resize', onResize); };
-  }
-
-  window._initCTAMarquee = initCTA;
-  document.querySelectorAll('.btn.view_site').forEach(initCTA);
-})();
-
 
 // == Contact Drawer (clic uniquement) ==
 (() => {
@@ -681,31 +688,50 @@ window.addEventListener('load', () => {
   const panel      = document.getElementById('contact-panel');
   const scrim      = document.querySelector('.contact-scrim');
   const btnClose   = panel?.querySelector('.contact-close');
-  if (!btnContact || !panel || !scrim) return;
+
+  // Si un des éléments n'existe pas ou pas de GSAP, on sort
+  if (!btnContact || !panel || !scrim || typeof gsap === 'undefined') return;
 
   const getPanelWidth = () => Math.min(window.innerWidth * 0.5, 700);
 
   let lastFocused = null;
-  const showForAnim = () => { panel.hidden = false; scrim.hidden = false; };
-  const hideIfClosed = (tl) => { if (tl.progress() === 0) { panel.hidden = true; scrim.hidden = true; } };
 
-  // timeline principale
-  const tl = gsap.timeline({ paused: true, defaults: { duration: 0.5, ease: "power3.out" } });
+  const showForAnim = () => {
+    panel.hidden = false;
+    scrim.hidden = false;
+  };
+
+  const hideIfClosed = (tl) => {
+    if (tl.progress() === 0) {
+      panel.hidden = true;
+      scrim.hidden = true;
+    }
+  };
+
+  // Timeline principale
+  const tl = gsap.timeline({
+    paused: true,
+    defaults: { duration: 0.5, ease: "power3.out" }
+  });
 
   const build = () => {
     tl.clear();
     const w = getPanelWidth();
 
     gsap.set(panel, { x: '100%' });
-    gsap.set(appRail, { x: 0 }); // on part de 0 en X
+    gsap.set(appRail, { x: 0 });
     gsap.set(scrim, { opacity: 0, pointerEvents: 'none' });
 
     tl.addLabel('start')
-      .to(scrim, { opacity: 1, onStart: () => scrim.style.pointerEvents = 'auto' }, 'start')
-      .to(panel, { x: 0 }, 'start')     // drawer glisse
-      .to(appRail, { x: -w }, 'start'); // contenu poussé
+      .to(scrim, {
+        opacity: 1,
+        onStart: () => { scrim.style.pointerEvents = 'auto'; }
+      }, 'start')
+      .to(panel, { x: 0 }, 'start')
+      .to(appRail, { x: -w }, 'start');
   };
 
+  // Init
   showForAnim();
   build();
   hideIfClosed(tl);
@@ -736,63 +762,31 @@ window.addEventListener('load', () => {
     });
   };
 
-  // clic pour ouvrir
+  // clic sur le bouton contact
   btnContact.addEventListener('click', (e) => {
     e.preventDefault();
-    // toggle si déjà ouvert
-    if (tl.progress() === 1 && !tl.reversed()) closePanel();
-    else openPanel();
+    if (tl.progress() === 1 && !tl.reversed()) {
+      closePanel();
+    } else {
+      openPanel();
+    }
   });
 
-  // moyens de fermer
+  // boutons / overlay pour fermer
   btnClose?.addEventListener('click', closePanel);
   scrim.addEventListener('click', closePanel);
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closePanel(); });
 
-  // (optionnel) ferme automatiquement quand tu passes sur la page "project"
+  // Esc pour fermer
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closePanel();
+  });
+
+  // hook optionnel
   window.addEventListener('closeContact', closePanel);
 })();
 
 
-// ==== HEADLINE: reveal lettre par lettre — version 100% CSS ====
-(function(){
-  function splitLetters(el){
-    if (!el || el._splitDone) return;
-    el._splitDone = true;
-
-    const text = el.textContent || '';
-    el.textContent = '';
-
-    const frag = document.createDocumentFragment();
-    for (let i = 0; i < text.length; i++){
-      const ch = text[i];
-      if (ch === ' ') { frag.appendChild(document.createTextNode('\u00A0')); continue; }
-
-      const wrap = document.createElement('span');
-      wrap.className = 'char-wrap';
-
-      const inner = document.createElement('span');
-      inner.className = 'char';
-      // cadence : 0.05s entre chaque lettre
-      inner.style.animationDelay = (i * 0.05) + 's';
-      inner.textContent = ch;
-
-      wrap.appendChild(inner);
-      frag.appendChild(wrap);
-    }
-    el.appendChild(frag);
-  }
-
-  // Lance dès que le DOM est prêt (même si GSAP n'est pas chargé)
-  if (document.readyState === 'loading'){
-    document.addEventListener('DOMContentLoaded', () => {
-      document.querySelectorAll('.js-reveal').forEach(splitLetters);
-    });
-  } else {
-    document.querySelectorAll('.js-reveal').forEach(splitLetters);
-  }
-})();
-
+// ==== CURSEUR CUSTOM ====
 document.addEventListener('DOMContentLoaded', () => {
   const cursor = document.querySelector('.custom-cursor');
   if (!cursor) return;
@@ -833,7 +827,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const t = Math.min(speed / speedForMax, 1);
     targetStretch = 1 + (maxStretch - 1) * t;
 
-    // angle du mouvement en degrés
     if (dist > 0.01) {
       targetAngle = Math.atan2(dy, dx) * (180 / Math.PI);
     }
@@ -867,3 +860,4 @@ document.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('mousemove', onMouseMove);
   requestAnimationFrame(animate);
 });
+
