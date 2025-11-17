@@ -194,20 +194,20 @@
 
     const cardConfigs = [
       {
-        offsetX: -40,
+        offsetX: 140,
         startOffset: 80,
-        endOffset: -440,
+        endOffset: -180,
         duration: 2.2,
         scaleStart: 0.85,
         scaleEnd: 1
       },
       {
-        offsetX: 220,
+        offsetX: 420,
         startOffset: 110,
         endOffset: -410,
         duration: 2.75,
         scaleStart: 0.5,
-        scaleEnd: 0.5
+        scaleEnd: 0.4
       }
     ];
 
@@ -548,44 +548,73 @@ function fillProjectView(data) {
 
 
   // Animation vers la vue projet
-  async function goToProjectFromSlide(slideEl) {
-    const data = parseSlideData(slideEl);
-    fillProjectView(data);
+  // Animation vers la vue projet
+async function goToProjectFromSlide(slideEl) {
+  const data = parseSlideData(slideEl);
 
-    clearEffect(true);
+  // On prépare tout le contenu + couleurs du projet
+  fillProjectView(data);
 
-    projectView.hidden = false;
+  // On calcule et fixe déjà la couleur du curseur côté projet
+  const projectBG = data.color || getComputedStyle(projectView).backgroundColor;
+  const projectFG = data.fg || autoContrast(projectBG);
+  document.documentElement.style.setProperty('--cursor-color', projectFG);
 
-    await gsap.to(appRail, {
-      yPercent: -100,
-      duration: 1.0,
-      ease: "power3.inOut"
-    });
+  // On nettoie les FX de la home
+  clearEffect(true);
 
-    if (data.href) history.pushState({ view: 'project', href: data.href }, '', data.href);
+  // On rend la vue projet visible avant l’animation
+  projectView.hidden = false;
 
-    enableMousePan($('.sliders_project', projectView), projectTrack);
+  // Slide vers la vue projet
+  await gsap.to(appRail, {
+    yPercent: -100,
+    duration: 1.0,
+    ease: "power3.inOut"
+  });
 
-    const btn = projectView.querySelector('.btn.view_site');
-    if (btn) {
-      if (window._initCTAMarquee && !btn._marqueeInit) {
-        window._initCTAMarquee(btn);
-      } else if (btn._marqueeRecalc) {
-        btn._marqueeRecalc();
-      }
+  // 🧷 Après l’anim, on RE-force la couleur du curseur au cas où un pointerleave la remettrait
+  document.documentElement.style.setProperty('--cursor-color', projectFG);
+
+  if (data.href) {
+    history.pushState({ view: 'project', href: data.href }, '', data.href);
+  }
+
+  // Pan sur le slider projet
+  enableMousePan($('.sliders_project', projectView), projectTrack);
+
+  const btn = projectView.querySelector('.btn.view_site');
+  if (btn) {
+    if (window._initCTAMarquee && !btn._marqueeInit) {
+      window._initCTAMarquee(btn);
+    } else if (btn._marqueeRecalc) {
+      btn._marqueeRecalc();
     }
   }
+}
+
 
   // Retour home
-  async function backToHome() {
-    await gsap.to(appRail, {
-      yPercent: 0,
-      duration: 1.0,
-      ease: "power3.inOut"
-    });
-    projectView.hidden = true;
-    history.pushState({ view: 'home' }, '', '/');
+  // Retour home
+async function backToHome() {
+  await gsap.to(appRail, {
+    yPercent: 0,
+    duration: 1.0,
+    ease: "power3.inOut"
+  });
+
+  projectView.hidden = true;
+  history.pushState({ view: 'home' }, '', '/');
+
+  // On reprend la couleur de la home pour le curseur
+  if (heroHome) {
+    const cs = getComputedStyle(heroHome);
+    const homeBG = cs.getPropertyValue('--bg').trim() || cs.backgroundColor;
+    const homeFG = cs.getPropertyValue('--fg').trim() || cs.color || autoContrast(homeBG);
+    document.documentElement.style.setProperty('--cursor-color', homeFG);
   }
+}
+
 
   // ===== Init comportements =====
 
@@ -783,6 +812,104 @@ function fillProjectView(data) {
 
   // hook optionnel
   window.addEventListener('closeContact', closePanel);
+})();
+
+// === CTA "View site" : marquee =====
+(() => {
+  if (typeof gsap === "undefined") {
+    console.warn("GSAP manquant pour l'animation du bouton View site.");
+    return;
+  }
+
+  const debounce = (fn, wait = 150) => {
+    let t;
+    return (...a) => {
+      clearTimeout(t);
+      t = setTimeout(() => fn(...a), wait);
+    };
+  };
+
+  function initCTA(btn) {
+    if (!btn || btn._marqueeInit) return;
+    btn._marqueeInit = true;
+
+    const baseText = (btn.getAttribute('aria-label') || btn.textContent || 'VIEW SITE').toUpperCase();
+    const sep = ' — ';
+
+    // on remplace le contenu du bouton par la piste
+    btn.textContent = '';
+    const track = document.createElement('span');
+    track.className = 'marquee_track';
+    btn.appendChild(track);
+
+    const makeItem = () => {
+      const el = document.createElement('span');
+      el.className = 'marquee_item';
+      el.textContent = baseText + sep;
+      return el;
+    };
+
+    function fillTrack() {
+      track.innerHTML = '';
+      track.appendChild(makeItem());
+      // on remplit jusqu'à avoir assez de largeur pour scroller
+      while (track.scrollWidth < btn.clientWidth * 3) {
+        track.appendChild(makeItem());
+      }
+      // on duplique pour le loop infini
+      track.innerHTML += track.innerHTML;
+    }
+
+    let pos = 0;
+    let speed = Number(btn.dataset.speed || 90);
+    let distance;
+    let running = true;
+    let slowFactor = 1;
+
+    function recalc() {
+      fillTrack();
+      distance = track.scrollWidth / 2;
+      pos = (pos % -distance) || 0;
+      gsap.set(track, { x: pos });
+    }
+
+    // recalc au prochain frame (le temps que le bouton prenne sa taille)
+    requestAnimationFrame(() => requestAnimationFrame(recalc));
+
+    const tick = (_time, deltaMs) => {
+      if (!running || !distance) return;
+      const delta = (deltaMs || 16.7) / 1000;
+      pos -= speed * slowFactor * delta;
+      if (pos <= -distance) pos += distance;
+      gsap.set(track, { x: pos });
+    };
+
+    gsap.ticker.add(tick);
+
+    const slow = () => { slowFactor = 0.25; };
+    const norm = () => { slowFactor = 1; };
+
+    btn.addEventListener('mouseenter', slow);
+    btn.addEventListener('mouseleave', norm);
+    btn.addEventListener('focusin', slow);
+    btn.addEventListener('focusout', norm);
+
+    const onResize = debounce(recalc, 150);
+    window.addEventListener('resize', onResize);
+
+    btn._marqueeRecalc  = recalc;
+    btn._marqueeDestroy = () => {
+      running = false;
+      gsap.ticker.remove(tick);
+      window.removeEventListener('resize', onResize);
+    };
+  }
+
+  // on expose une fonction globale pour ré-initialiser si besoin (dans goToProjectFromSlide)
+  window._initCTAMarquee = initCTA;
+
+  // init sur les boutons déjà présents au chargement
+  document.querySelectorAll('.btn.view_site').forEach(initCTA);
 })();
 
 
