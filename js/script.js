@@ -1,4 +1,5 @@
 // js/script.js
+
 (() => {
   // ====== Sélecteurs principaux ======
   const appRail     = document.querySelector('.app-rail');
@@ -19,6 +20,7 @@
   const projectTitle      = projectView.querySelector('.project_title');
   const projectDesc       = projectView.querySelector('.project_desc');
   const projectSliderWrap = projectView.querySelector('.sliders_project');
+  
 
   // Lightbox (overlay plein écran)
   const lightbox        = document.querySelector('.lightbox');
@@ -30,8 +32,10 @@
   // ====== Utils ======
   const $  = (s, el = document) => el.querySelector(s);
   const $$ = (s, el = document) => [...el.querySelectorAll(s)];
-  const rand = (min, max) => Math.random() * (max - min) + min;
   const forcePaint = (el) => { if (el) void el.offsetHeight; };
+  const isCoarsePointer = window.matchMedia &&
+                          window.matchMedia('(pointer: coarse)').matches;
+
 
   function autoContrast(bgColor){
     const toRGB = (c) => {
@@ -63,8 +67,11 @@
   }
 
   // ====== Pan (mousemove) ======
-  function enableMousePan(container, track) {
-    if (!container || !track) return { enable(){}, disable(){}, isEnabled(){ return true; } };
+    function enableMousePan(container, track) {
+    // Sur mobile / tablette : pas de pan à la souris, on laisse le scroll natif
+    if (isCoarsePointer || !container || !track || typeof gsap === 'undefined') {
+      return { enable(){}, disable(){}, isEnabled(){ return false; } };
+    }
 
     let enabled = true;
     const toX = gsap.quickTo(track, "x", { duration: 0.6, ease: "power3.out" });
@@ -95,9 +102,10 @@
     };
   }
 
+
   // === FX Layer ==========================================================
-  let fxLayer;       // <div class="fx-layer"> unique sur la home
-  let currentTL;     // timeline GSAP en cours
+  let fxLayer;
+  let currentTL;
   let currentSprites = [];
 
   function ensureFxLayer(parentSection){
@@ -125,29 +133,32 @@
     srcs.forEach(s => { const i = new Image(); i.src = s; });
   }
 
-  // Effet "rougail"
+  // Effet "rougail" – 1 saucisse centrée
   function playFxRougail(images){
-    const srcs = images.slice(0, 3);
-    if (!srcs.length) return gsap.timeline();
+    if (typeof gsap === 'undefined' || !fxLayer || !homeSlider) return gsap.timeline();
+    const src = images[0];
+    if (!src) return gsap.timeline();
 
     const tl = gsap.timeline({ defaults:{ ease: "expo.out" } });
 
     const layerRect  = fxLayer.getBoundingClientRect();
     const sliderRect = homeSlider.getBoundingClientRect();
-    const vw = layerRect.width / 100;
 
     const startBelowY  = sliderRect.bottom - layerRect.top + 260;
     const endAboveY    = sliderRect.top    - layerRect.top - 340;
+    const baseX        = sliderRect.left   - layerRect.left + sliderRect.width * 0.55;
 
-    const baseX = sliderRect.left - layerRect.left + sliderRect.width * 0.55;
-
-    const sizesVW = [85, 8, 85];
-
-    const cfg = [
-      { w:sizesVW[0], dx:  0*vw,  dy0:   0,  dy1:   0,  r0:-6, s0:.95, s1:1.00, dur:2.00, del:0.50 },
-      { w:sizesVW[1], dx: -8*vw,  dy0:-10,  dy1:-30,  r0:-4, s0:.93, s1:1.00, dur:2.05, del:0.92 },
-      { w:sizesVW[2], dx: 19*vw,  dy0:-15,  dy1:-40,  r0: 56, s0:.93, s1:1.00, dur:2.10, del:1.04 },
-    ];
+    const cfg = {
+      w: 85,
+      dx: 0,
+      dy0: 0,
+      dy1: 0,
+      r0: -6,
+      s0: 0.95,
+      s1: 1.0,
+      dur: 2.0,
+      del: 0.5
+    };
 
     function addSprite(src, {w, dx, dy0, dy1, r0, s0, s1, dur, del}){
       const el = document.createElement('img');
@@ -175,11 +186,11 @@
       }, del);
     }
 
-    srcs.forEach((src, i) => addSprite(src, cfg[i]));
+    addSprite(src, cfg);
     return tl;
   }
 
-  // Effet "cards" (2 cartes only, trajectoires config)
+  // Effet "cards" – 2 cartes
   function playFxCards(images, count){
     if (typeof gsap === "undefined" || !fxLayer || !homeSlider) {
       return gsap.timeline();
@@ -253,6 +264,12 @@
   }
 
   function buildFx(slide){
+    const projectId = (slide.dataset.project || '').toLowerCase();
+    if (projectId === 'ardko') {
+      // pas de sprites pour Ardko, seulement le grain
+      return null;
+    }
+
     const type  = (slide.dataset.fx || '').toLowerCase();
     const imgs  = (slide.dataset.fxImages || '').split('|').map(s => s.trim()).filter(Boolean);
     const count = Number(slide.dataset.fxCount || (type === 'rougail' ? 9 : 6));
@@ -285,6 +302,12 @@
         return;
       }
 
+      if (typeof gsap === 'undefined') {
+        sprites.forEach(el => el.remove());
+        resolve();
+        return;
+      }
+
       gsap.to(sprites, {
         y: '+=40',
         opacity: 0,
@@ -300,7 +323,9 @@
   }
 
   function playEffectForSlide(slide, parentSection){
-    ensureFxLayer(parentSection);
+    if (!slide) return;
+    ensureFxLayer(parentSection || homeView);
+
     const switchToken = ++_fxSwitchToken;
 
     clearEffect(false, 700).then(() => {
@@ -308,6 +333,7 @@
 
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
+          if (!fxLayer || !homeSlider) return;
           const layerRect  = fxLayer.getBoundingClientRect();
           const sliderRect = homeSlider.getBoundingClientRect();
           if (!layerRect.width || !sliderRect.width) return;
@@ -330,7 +356,7 @@
     if (typeof gsap !== 'undefined') {
       gsap.fromTo(lightboxContent,
         { scale: 0.95, opacity: 0 },
-        { scale: 1, opacity: 1, duration: 0.25, ease: 'power2.out' }
+        { scale: 1, opacity: 1, duration: 0.25, ease: 'power3.out' }
       );
     }
   }
@@ -381,7 +407,10 @@
   }
 
   // ===== Thème + FX au hover du slider home =====
-  function enableHoverTheme(slides, targetContainerEl, targetSectionEl = homeView) {
+    function enableHoverTheme(slides, targetContainerEl, targetSectionEl = homeView) {
+    // Sur mobile / tablette : pas de thème au hover, pas de FX
+    if (isCoarsePointer) return;
+
     if (!slides.length || !targetContainerEl || !homeSlider) return;
 
     const cs = getComputedStyle(targetContainerEl);
@@ -389,6 +418,8 @@
     const baseFG = cs.getPropertyValue('--fg').trim() || cs.color;
 
     document.documentElement.style.setProperty('--cursor-color', baseFG);
+    // ... (le reste de ta fonction inchangé)
+
 
     const setTheme = (bg, fg) => {
       targetContainerEl.style.setProperty('--bg', bg);
@@ -400,12 +431,42 @@
       document.documentElement.style.setProperty('--cursor-color', fg);
     };
 
-    const applyFromSlide = (slide) => {
-      const bg = slide.dataset.color || baseBG;
-      const fg = slide.dataset.fg || autoContrast(bg);
+    const isArdkoSlide = (slide) =>
+      (slide.dataset.project || '').toLowerCase() === 'ardko';
+
+    const isHoloraSlide = (slide) =>
+      (slide.dataset.project || '').toLowerCase() === 'holora' ||
+      (slide.dataset.title   || '').toLowerCase() === 'holora';
+
+    function applyFromSlide(slide) {
+      let bg = slide.dataset.color || baseBG;
+      let fg = slide.dataset.fg || autoContrast(bg);
+
+      // Holora : noir / blanc
+      if (isHoloraSlide(slide)) {
+        bg = '#000000';
+        fg = '#ffffff';
+      }
+
       setTheme(bg, fg);
+
+      // Grain Ardko
+      if (isArdkoSlide(slide)) {
+        document.body.classList.add('is-grain-ardko');
+      } else if (!document.body.classList.contains('is-project-ardko')) {
+        document.body.classList.remove('is-grain-ardko');
+      }
+
+      // Glitch Holora
+      if (isHoloraSlide(slide)) {
+        document.body.classList.add('glitch-active');
+      } else if (!document.body.classList.contains('is-project-holora')) {
+        document.body.classList.remove('glitch-active');
+      }
+
+      // FX
       playEffectForSlide(slide, targetSectionEl || homeView);
-    };
+    }
 
     let currentSlide = null;
 
@@ -421,6 +482,13 @@
       currentSlide = null;
       setTheme(baseBG, baseFG);
       clearEffect(false, 900);
+
+      if (!document.body.classList.contains('is-project-ardko')) {
+        document.body.classList.remove('is-grain-ardko');
+      }
+      if (!document.body.classList.contains('is-project-holora')) {
+        document.body.classList.remove('glitch-active');
+      }
     });
 
     slides.forEach(s => {
@@ -432,11 +500,18 @@
         currentSlide = null;
         setTheme(baseBG, baseFG);
         clearEffect();
+
+        if (!document.body.classList.contains('is-project-ardko')) {
+          document.body.classList.remove('is-grain-ardko');
+        }
+        if (!document.body.classList.contains('is-project-holora')) {
+          document.body.classList.remove('glitch-active');
+        }
       });
     });
   }
 
-  // Construit les items images/vidéos pour le slider projet
+  // ===== Construit les slides projet =====
   function buildProjectSlides(mediaList, altBase = 'project media') {
     return mediaList.map(src => {
       const trimmed = src.trim().toLowerCase();
@@ -465,7 +540,7 @@
     }).join('');
   }
 
-  // Crée le bouton "View site" sous le slider projet
+  // ===== CTA "View site" =====
   function ensureProjectCTA(anchorEl) {
     if (!anchorEl) return null;
     let ctaWrap = projectView.querySelector('.project_cta');
@@ -488,7 +563,7 @@
     return btn;
   }
 
-  // Récupère les données d’une slide
+  // ===== Récup données d’une slide =====
   function parseSlideData(slideEl) {
     const title  = slideEl.dataset.title   || 'Project';
     const color  = slideEl.dataset.color   || '';
@@ -496,139 +571,161 @@
     const href   = slideEl.getAttribute('href') || '/project';
     const url    = slideEl.dataset.url || '';
     const images = (slideEl.dataset.images || '').split('|').filter(Boolean);
+    const projectId = slideEl.dataset.project || '';
 
     const rawDesc = slideEl.dataset.desc || '';
     const parts   = rawDesc.includes('||') ? rawDesc.split('||') : [rawDesc, rawDesc];
     const p1 = (parts[0] || '').trim();
     const p2 = (parts[1] || parts[0] || '').trim();
 
-    return { title, color, fg, href, url, images, p1, p2 };
+    return { title, color, fg, href, url, images, p1, p2, projectId };
   }
 
-  // Remplit la vue projet + thème (SANS transition animée de couleur)
-function fillProjectView(data) {
-  if (projectTitle) projectTitle.textContent = data.title || '—';
+  // ===== Remplit la vue projet =====
+  function fillProjectView(data) {
+    if (projectTitle) projectTitle.textContent = data.title || '—';
 
-  if (projectDesc) {
-    const p1 = data.p1 ? `<p class="project_p1">${data.p1}</p>` : '';
-    const p2 = data.p2 ? `<p class="project_p2">${data.p2}</p>` : '';
-    projectDesc.innerHTML = p1 + p2;
+    if (projectDesc) {
+      const p1 = data.p1 ? `<p class="project_p1">${data.p1}</p>` : '';
+      const p2 = data.p2 ? `<p class="project_p2">${data.p2}</p>` : '';
+      projectDesc.innerHTML = p1 + p2;
+    }
+
+    if (heroProject) {
+      const bg = data.color || getComputedStyle(heroProject).getPropertyValue('--bg').trim();
+      const fg = (data.fg && data.fg.trim()) || autoContrast(bg);
+
+      heroProject.style.setProperty('--bg', bg);
+      heroProject.style.setProperty('--fg', fg);
+      projectView.style.setProperty('--fg', fg);
+      projectView.style.backgroundColor = bg;
+
+      document.documentElement.style.setProperty('--cursor-color', fg);
+    }
+
+    if (projectTrack) {
+      projectTrack.innerHTML = buildProjectSlides(data.images, `${data.title} — image`);
+      if (typeof gsap !== 'undefined') {
+        gsap.set(projectTrack.querySelectorAll('.slide'), { opacity: 0, y: 12 });
+        gsap.to(projectTrack.querySelectorAll('.slide'), {
+          opacity: 1,
+          y: 0,
+          duration: 0.5,
+          stagger: 0.06,
+          delay: 0.05,
+          ease: "power2.out"
+        });
+      }
+    }
+
+    const btn = ensureProjectCTA(projectSliderWrap);
+    if (btn) btn.href = (data.url && data.url !== '') ? data.url : '#';
   }
 
-  if (heroProject) {
-    const bg = data.color || getComputedStyle(heroProject).getPropertyValue('--bg').trim();
-    const fg = (data.fg && data.fg.trim()) || autoContrast(bg);
+  // ===== Animation vers la vue projet =====
+  async function goToProjectFromSlide(slideEl) {
+    const data = parseSlideData(slideEl);
+    const isArdko   = (data.projectId || '').toLowerCase() === 'ardko';
+    const isHolora  =
+      (data.projectId || '').toLowerCase() === 'holora' ||
+      (data.title || '').toLowerCase() === 'holora';
 
-    // on pose directement les couleurs, sans gsap.to
-    heroProject.style.setProperty('--bg', bg);
-    heroProject.style.setProperty('--fg', fg);
-    projectView.style.setProperty('--fg', fg);
-    projectView.style.backgroundColor = bg;
+    fillProjectView(data);
 
-    // curseur suit la couleur du projet
-    document.documentElement.style.setProperty('--cursor-color', fg);
-  }
+    const projectBG = data.color || getComputedStyle(projectView).backgroundColor;
+    const projectFG = data.fg || autoContrast(projectBG);
+    document.documentElement.style.setProperty('--cursor-color', projectFG);
 
-  if (projectTrack) {
-    projectTrack.innerHTML = buildProjectSlides(data.images, `${data.title} — image`);
-    gsap.set(projectTrack.querySelectorAll('.slide'), { opacity: 0, y: 12 });
-    gsap.to(projectTrack.querySelectorAll('.slide'), {
-      opacity: 1,
-      y: 0,
-      duration: 0.5,
-      stagger: 0.06,
-      delay: 0.05,
-      ease: "power2.out"
-    });
-  }
+    // Ardko
+    if (isArdko) {
+      document.body.classList.add('is-grain-ardko', 'is-project-ardko');
+    } else {
+      document.body.classList.remove('is-project-ardko', 'is-grain-ardko');
+    }
 
-  const btn = ensureProjectCTA(projectSliderWrap);
-  if (btn) btn.href = (data.url && data.url !== '') ? data.url : '#';
-}
+    // Holora
+    if (isHolora) {
+      document.body.classList.add('is-project-holora', 'glitch-active');
+    } else {
+      document.body.classList.remove('is-project-holora');
+      // glitch-active peut rester si hover
+    }
 
+    clearEffect(true);
 
-  // Animation vers la vue projet
-  // Animation vers la vue projet
-async function goToProjectFromSlide(slideEl) {
-  const data = parseSlideData(slideEl);
+    projectView.hidden = false;
 
-  // On prépare tout le contenu + couleurs du projet
-  fillProjectView(data);
+    if (typeof gsap !== 'undefined') {
+      await gsap.to(appRail, {
+        yPercent: -100,
+        duration: 1.0,
+        ease: "power3.inOut"
+      });
+    } else {
+      appRail.style.transform = 'translateY(-100%)';
+    }
 
-  // On calcule et fixe déjà la couleur du curseur côté projet
-  const projectBG = data.color || getComputedStyle(projectView).backgroundColor;
-  const projectFG = data.fg || autoContrast(projectBG);
-  document.documentElement.style.setProperty('--cursor-color', projectFG);
+    document.documentElement.style.setProperty('--cursor-color', projectFG);
 
-  // On nettoie les FX de la home
-  clearEffect(true);
+    if (isHolora) {
+      document.body.classList.add('is-project-holora', 'glitch-active');
+    }
 
-  // On rend la vue projet visible avant l’animation
-  projectView.hidden = false;
+    if (data.href && history && history.pushState) {
+      history.pushState({ view: 'project', href: data.href }, '', data.href);
+    }
 
-  // Slide vers la vue projet
-  await gsap.to(appRail, {
-    yPercent: -100,
-    duration: 1.0,
-    ease: "power3.inOut"
-  });
+    enableMousePan($('.sliders_project', projectView), projectTrack);
 
-  // 🧷 Après l’anim, on RE-force la couleur du curseur au cas où un pointerleave la remettrait
-  document.documentElement.style.setProperty('--cursor-color', projectFG);
-
-  if (data.href) {
-    history.pushState({ view: 'project', href: data.href }, '', data.href);
-  }
-
-  // Pan sur le slider projet
-  enableMousePan($('.sliders_project', projectView), projectTrack);
-
-  const btn = projectView.querySelector('.btn.view_site');
-  if (btn) {
-    if (window._initCTAMarquee && !btn._marqueeInit) {
-      window._initCTAMarquee(btn);
-    } else if (btn._marqueeRecalc) {
-      btn._marqueeRecalc();
+    const btn = projectView.querySelector('.btn.view_site');
+    if (btn) {
+      if (window._initCTAMarquee && !btn._marqueeInit) {
+        window._initCTAMarquee(btn);
+      } else if (btn._marqueeRecalc) {
+        btn._marqueeRecalc();
+      }
     }
   }
-}
 
+  // ===== Retour home =====
+  async function backToHome() {
+    if (typeof gsap !== 'undefined') {
+      await gsap.to(appRail, {
+        yPercent: 0,
+        duration: 1.0,
+        ease: "power3.inOut"
+      });
+    } else {
+      appRail.style.transform = 'translateY(0%)';
+    }
 
-  // Retour home
-  // Retour home
-async function backToHome() {
-  await gsap.to(appRail, {
-    yPercent: 0,
-    duration: 1.0,
-    ease: "power3.inOut"
-  });
+    projectView.hidden = true;
+    if (history && history.pushState) {
+      history.pushState({ view: 'home' }, '', '/');
+    }
 
-  projectView.hidden = true;
-  history.pushState({ view: 'home' }, '', '/');
+    document.body.classList.remove(
+      'is-project-ardko',
+      'is-grain-ardko',
+      'is-project-holora',
+      'glitch-active'
+    );
 
-  // On reprend la couleur de la home pour le curseur
-  if (heroHome) {
-    const cs = getComputedStyle(heroHome);
-    const homeBG = cs.getPropertyValue('--bg').trim() || cs.backgroundColor;
-    const homeFG = cs.getPropertyValue('--fg').trim() || cs.color || autoContrast(homeBG);
-    document.documentElement.style.setProperty('--cursor-color', homeFG);
+    if (heroHome) {
+      const cs = getComputedStyle(heroHome);
+      const homeBG = cs.getPropertyValue('--bg').trim() || cs.backgroundColor;
+      const homeFG = cs.getPropertyValue('--fg').trim() || cs.color || autoContrast(homeBG);
+      document.documentElement.style.setProperty('--cursor-color', homeFG);
+    }
   }
-}
-
 
   // ===== Init comportements =====
-
-  // Init état sections
   homeView.style.backgroundColor    = homeBaseBG;
   projectView.style.backgroundColor = projectBaseBG;
 
-  // Pan home
-  const homePanCtl = enableMousePan(homeSlider, homeTrack);
-
-  // Thème + FX
+  enableMousePan(homeSlider, homeTrack);
   enableHoverTheme(homeSlides, heroHome, homeView);
 
-  // Clic slide = ouvrir projet
   homeSlides.forEach(slide => {
     slide.addEventListener('click', e => {
       if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
@@ -637,10 +734,8 @@ async function backToHome() {
     });
   });
 
-  // Bouton retour
   backBtn?.addEventListener('click', backToHome);
 
-  // Clic sur image/vidéo dans le slider projet = lightbox
   if (projectTrack && lightbox && lightboxContent) {
     projectTrack.addEventListener('click', (e) => {
       const img = e.target.closest('.slide img');
@@ -660,7 +755,6 @@ async function backToHome() {
     });
   }
 
-  // fermer en cliquant sur le fond sombre
   if (lightbox) {
     lightbox.addEventListener('click', (e) => {
       if (e.target === lightbox || e.target.classList.contains('lightbox__backdrop')) {
@@ -669,7 +763,6 @@ async function backToHome() {
     });
   }
 
-  // fermer avec Échap
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       closeLightbox();
@@ -681,33 +774,74 @@ async function backToHome() {
     const isHome = location.pathname === '/' || location.pathname === '';
     if (isHome) {
       projectView.hidden = true;
-      gsap.set(appRail, { yPercent: 0 });
+      if (typeof gsap !== 'undefined') {
+        gsap.set(appRail, { yPercent: 0 });
+      } else {
+        appRail.style.transform = 'translateY(0%)';
+      }
+      document.body.classList.remove(
+        'is-project-ardko',
+        'is-grain-ardko',
+        'is-project-holora',
+        'glitch-active'
+      );
       return;
     }
+
     const target = [...homeSlides].find(s => s.getAttribute('href') === location.pathname);
     if (target) {
-      fillProjectView(parseSlideData(target));
+      const data = parseSlideData(target);
+      fillProjectView(data);
       projectView.hidden = false;
-      gsap.set(appRail, { yPercent: -100 });
+      if (typeof gsap !== 'undefined') {
+        gsap.set(appRail, { yPercent: -100 });
+      } else {
+        appRail.style.transform = 'translateY(-100%)';
+      }
       enableMousePan($('.sliders_project', projectView), projectTrack);
+
+      const isArdko  = (data.projectId || '').toLowerCase() === 'ardko';
+      const isHolora =
+        (data.projectId || '').toLowerCase() === 'holora' ||
+        (data.title || '').toLowerCase() === 'holora';
+
+      if (isArdko) {
+        document.body.classList.add('is-grain-ardko', 'is-project-ardko');
+      } else {
+        document.body.classList.remove('is-project-ardko', 'is-grain-ardko');
+      }
+
+      if (isHolora) {
+        document.body.classList.add('is-project-holora', 'glitch-active');
+      } else {
+        document.body.classList.remove('is-project-holora', 'glitch-active');
+      }
+
+      const btn = projectView.querySelector('.btn.view_site');
+      if (btn) {
+        if (window._initCTAMarquee && !btn._marqueeInit) window._initCTAMarquee(btn);
+        else btn._marqueeRecalc && btn._marqueeRecalc();
+      }
     } else {
       projectView.hidden = false;
-      gsap.set(appRail, { yPercent: -100 });
-    }
-
-    const btn = projectView.querySelector('.btn.view_site');
-    if (btn) {
-      if (window._initCTAMarquee && !btn._marqueeInit) window._initCTAMarquee(btn);
-      else btn._marqueeRecalc && btn._marqueeRecalc();
+      if (typeof gsap !== 'undefined') {
+        gsap.set(appRail, { yPercent: -100 });
+      } else {
+        appRail.style.transform = 'translateY(-100%)';
+      }
+      document.body.classList.remove(
+        'is-project-ardko',
+        'is-grain-ardko',
+        'is-project-holora',
+        'glitch-active'
+      );
     }
   });
 
-  // Sécurise les mesures au load
   window.addEventListener('load', () => {
     forcePaint(homeSlider);
     forcePaint(document.body);
   });
-
 })();
 
 // == Contact Drawer (clic uniquement) ==
@@ -718,7 +852,6 @@ async function backToHome() {
   const scrim      = document.querySelector('.contact-scrim');
   const btnClose   = panel?.querySelector('.contact-close');
 
-  // Si un des éléments n'existe pas ou pas de GSAP, on sort
   if (!btnContact || !panel || !scrim || typeof gsap === 'undefined') return;
 
   const getPanelWidth = () => Math.min(window.innerWidth * 0.5, 700);
@@ -737,7 +870,6 @@ async function backToHome() {
     }
   };
 
-  // Timeline principale
   const tl = gsap.timeline({
     paused: true,
     defaults: { duration: 0.5, ease: "power3.out" }
@@ -760,12 +892,10 @@ async function backToHome() {
       .to(appRail, { x: -w }, 'start');
   };
 
-  // Init
   showForAnim();
   build();
   hideIfClosed(tl);
 
-  // conserve l'état au resize
   window.addEventListener('resize', () => {
     const p = tl.progress();
     const wasOpen = p > 0 && !tl.reversed();
@@ -791,7 +921,6 @@ async function backToHome() {
     });
   };
 
-  // clic sur le bouton contact
   btnContact.addEventListener('click', (e) => {
     e.preventDefault();
     if (tl.progress() === 1 && !tl.reversed()) {
@@ -801,16 +930,13 @@ async function backToHome() {
     }
   });
 
-  // boutons / overlay pour fermer
   btnClose?.addEventListener('click', closePanel);
   scrim.addEventListener('click', closePanel);
 
-  // Esc pour fermer
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closePanel();
   });
 
-  // hook optionnel
   window.addEventListener('closeContact', closePanel);
 })();
 
@@ -836,7 +962,6 @@ async function backToHome() {
     const baseText = (btn.getAttribute('aria-label') || btn.textContent || 'VIEW SITE').toUpperCase();
     const sep = ' — ';
 
-    // on remplace le contenu du bouton par la piste
     btn.textContent = '';
     const track = document.createElement('span');
     track.className = 'marquee_track';
@@ -852,11 +977,9 @@ async function backToHome() {
     function fillTrack() {
       track.innerHTML = '';
       track.appendChild(makeItem());
-      // on remplit jusqu'à avoir assez de largeur pour scroller
       while (track.scrollWidth < btn.clientWidth * 3) {
         track.appendChild(makeItem());
       }
-      // on duplique pour le loop infini
       track.innerHTML += track.innerHTML;
     }
 
@@ -873,7 +996,6 @@ async function backToHome() {
       gsap.set(track, { x: pos });
     }
 
-    // recalc au prochain frame (le temps que le bouton prenne sa taille)
     requestAnimationFrame(() => requestAnimationFrame(recalc));
 
     const tick = (_time, deltaMs) => {
@@ -905,13 +1027,9 @@ async function backToHome() {
     };
   }
 
-  // on expose une fonction globale pour ré-initialiser si besoin (dans goToProjectFromSlide)
   window._initCTAMarquee = initCTA;
-
-  // init sur les boutons déjà présents au chargement
   document.querySelectorAll('.btn.view_site').forEach(initCTA);
 })();
-
 
 // ==== CURSEUR CUSTOM ====
 document.addEventListener('DOMContentLoaded', () => {
@@ -930,9 +1048,9 @@ document.addEventListener('DOMContentLoaded', () => {
   let targetAngle = 0;
   let currentAngle = 0;
 
-  const baseW = 12;     // largeur au repos
-  const baseH = 12;     // hauteur au repos
-  const maxStretch = 3; // largeur max relative
+  const baseW = 12;
+  const baseH = 12;
+  const maxStretch = 3;
   const speedForMax = 1.2;
 
   function onMouseMove(e) {
@@ -966,18 +1084,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const lerp = (a, b, f) => a + (b - a) * f;
 
     currentStretch = lerp(currentStretch, targetStretch, 0.15);
-    currentAngle = lerp(currentAngle, targetAngle, 0.25);
+    currentAngle   = lerp(currentAngle,   targetAngle,   0.25);
 
-    const width = baseW * currentStretch;
+    const width  = baseW * currentStretch;
     const height = baseH;
 
-    cursor.style.width = `${width}px`;
-    cursor.style.height = `${height}px`;
+    cursor.style.width        = `${width}px`;
+    cursor.style.height       = `${height}px`;
     cursor.style.borderRadius = `${height / 2}px`;
 
     const translate = `translate(${currentX}px, ${currentY}px)`;
-    const center = `translate(-50%, -50%)`;
-    const rotate = `rotate(${currentAngle}deg)`;
+    const center    = `translate(-50%, -50%)`;
+    const rotate    = `rotate(${currentAngle}deg)`;
 
     cursor.style.transform = `${translate} ${center} ${rotate}`;
 
@@ -987,4 +1105,3 @@ document.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('mousemove', onMouseMove);
   requestAnimationFrame(animate);
 });
-

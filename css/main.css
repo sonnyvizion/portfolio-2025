@@ -473,7 +473,6 @@ nav a:hover {
   position: relative;
   background: #fff;         /* contraste avec tes textes blancs */
   z-index: 10;
-  position: relative;
 }
 
 .slides_track {
@@ -533,20 +532,18 @@ nav a:hover {
 
 /* La section home a une couleur par défaut et une transition lisse */
 .view--home {  
-   position: relative; 
+  position: relative;
   --fg: #fff;
-   background-color: #845351;          /* ta couleur initiale */
-  transition: background-color 2.6s ease;  /* lissage au hover */
-}
-
-/* La section project peut aussi animer sa couleur */
-.view--project {
+  background-color: transparent;      /* <-- important */
   transition: background-color 2.6s ease;
 }
 
-/* Les containers restent transparents */
-.view--home .container,
-.view--project .container { background: transparent; }
+.view--project {
+  position: relative;
+  background-color: transparent;      /* <-- important */
+  transition: background-color 2.6s ease;
+}
+
 
 .fx-layer{
   position: absolute;
@@ -737,6 +734,320 @@ nav a:hover {
   box-shadow: 0 24px 60px rgba(0,0,0,.6);
   display: block;
 }
+
+/* ========== GRAIN CINÉMA ========== */
+
+/* ========== GRAIN CINÉMA (GIF) ========== */
+
+.grain-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 999; /* en dessous du curseur custom */
+
+  background-image: url("/img/static-tv-static.gif"); /* ton GIF */
+  background-repeat: repeat;
+  background-size: 200px 200px;  /* ajuste la taille du grain ici */
+
+  mix-blend-mode: soft-light;    /* ou overlay / multiply selon ton rendu */
+  opacity: 0;
+  transition: opacity 3s ease-out;
+}
+
+/* Grain actif sur Ardko (home + projet) */
+body.is-grain-ardko .grain-overlay {
+  opacity: 0.35;  /* ajuste l’intensité */
+}
+
+/* Un poil plus fort sur la page projet si tu veux */
+body.is-project-ardko .grain-overlay {
+  opacity: 0.45;
+}
+
+/* ====== GLITCH GLOBAL HOLORA (version bien visible) ====== */
+
+body.glitch-active {
+  overflow: hidden;
+}
+
+body.glitch-active::before,
+body.glitch-active::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 998;
+
+  /* bandes horizontales + teintes colorées */
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      rgba(255,255,255,0.18) 0px,
+      rgba(255,255,255,0.18) 1px,
+      transparent 2px,
+      transparent 4px
+    ),
+    radial-gradient(circle at 10% 20%, rgba(0,255,255,0.16), transparent 60%),
+    radial-gradient(circle at 80% 70%, rgba(255,0,255,0.18), transparent 55%);
+
+  mix-blend-mode: screen;
+  opacity: 0.4; /* fort pour bien voir */
+  animation: glitchShift 2.08s steps(3) infinite;
+}
+
+body.glitch-active::after {
+  mix-blend-mode: difference;
+  opacity: 0.5;
+  animation-duration: 2.05s;
+  animation-direction: reverse;
+}
+
+@keyframes glitchShift {
+  0%   { transform: translate(0, 0); }
+  20%  { transform: translate(-6px, 4px); }
+  40%  { transform: translate(5px, -5px); }
+  60%  { transform: translate(-8px, -3px); }
+  80%  { transform: translate(4px, 6px); }
+  100% { transform: translate(0, 0); }
+}
+/* ===== BG PREVIEW BRENDA ===== */
+.bg-preview {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0;
+  transform: scale(1.03);
+  transition: opacity .4s ease-out, transform .6s ease-out;
+}
+
+.bg-preview.is-visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.view--home,
+.view--project {
+  position: relative;
+  z-index: 1;
+}
+
+
+
+
+/* ===========================
+   RESPONSIVE TABLETTE
+   =========================== */
+@media (max-width: 1024px) {
+
+  /* Le rail peut être un peu plus souple */
+  .view {
+    min-height: 100vh;
+    height: auto;
+  }
+
+  nav {
+    font-size: 1rem;
+    padding: 1rem 1.5rem;
+  }
+
+  .container {
+    padding: 4.5rem 1.75rem;
+    height: auto;           /* laisse respirer le contenu */
+    min-height: 60vh;
+  }
+
+  h1 {
+    font-size: 20vw;
+  }
+
+  .headline {
+    font-size: 22vw;
+  }
+
+  .project_title {
+    font-size: 22vw;
+  }
+
+  p {
+    font-size: 0.95rem;
+  }
+
+  .sub_txt {
+    width: 60vw;
+    max-width: 38rem;
+  }
+
+  /* Slider home & projet : plus haut, scroll horizontal possible */
+  .sliders_works,
+  .sliders_project {
+    height: 40vh;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .slides_track,
+  .project_track {
+    width: max-content;
+  }
+
+  .slide,
+  .sliders_project .slide,
+  .project_track .slide {
+    flex: 0 0 55vw;
+  }
+
+  /* 2 paragraphes projet en colonne */
+  .project_desc {
+    flex-direction: column;
+    gap: 1rem;
+    margin-top: 1.5rem;
+  }
+
+  .project_p1,
+  .project_p2 {
+    width: 60%;
+    margin-right: 0;
+  }
+
+  /* CTA projet */
+  .project_cta {
+    padding: 1.5rem 1.75rem 2rem;
+    justify-content: flex-start;
+  }
+
+  .btn.view_site {
+    width: auto;
+    font-size: 0.85rem;
+    width: 30vw;
+    margin: auto;
+  }
+
+  /* Cercle “works” plus petit et recentré */
+  .works_circle {
+    width: 12vw;
+    bottom: 32vh;
+    left: auto;
+    right: 5vw;
+  }
+
+  /* Drawer contact pleine largeur sur petit écran */
+  .contact-panel {
+    width: 100vw;
+  }
+}
+
+/* ===========================
+   RESPONSIVE MOBILE
+   =========================== */
+@media (max-width: 768px) {
+
+  nav {
+    font-size: 0.9rem;
+    padding: 0.85rem 1.25rem;
+  }
+
+  .container {
+    padding: 4.25rem 1.25rem 1.75rem;
+  }
+
+  h1 {
+    font-size: 14vw;
+    letter-spacing: -0.1vw;
+  }
+
+  p {
+    font-size: 0.9rem;
+    line-height: 1.4;
+  }
+
+  .sub_txt {
+    width: 100%;
+    max-width: none;
+    margin-top: 1.25rem;
+  }
+
+  .sliders_works,
+  .sliders_project {
+    height: 40vh;
+  }
+
+  .slide,
+  .sliders_project .slide,
+  .project_track .slide {
+    flex: 0 0 75vw;
+  }
+
+  .project_desc {
+    margin-top: 1.25rem;
+  }
+
+  .project_cta {
+    padding-inline: 1.25rem;
+  }
+
+  .btn.view_site {
+    font-size: 0.8rem;
+    letter-spacing: 0.08em;
+    width: 30vw;
+    margin: auto;
+  }
+
+  /* cercle : option 1 → plus petit
+  .works_circle {
+    width: 18vw;
+    bottom: 38vh;
+    right: 6vw;
+  }
+  */
+
+  /* cercle : option 2 → tu peux le cacher si tu préfères épurer */
+  .works_circle {
+    display: none;
+  }
+
+  /* Drawer contact : texte un peu plus petit */
+  .contact_txt {
+    font-size: 1.5rem;
+  }
+  .envoyer_contact {
+    font-size: 1.2rem;
+  }
+  .insta {
+    font-size: 0.9rem;
+    bottom: -60%;
+  }
+}
+
+/* ===========================
+   DÉSACTIVER LES HOVER SUR MOBILE/TABLETTE
+   (déjà pas vraiment actifs, mais on sécurise)
+   =========================== */
+@media (pointer: coarse) {
+
+  nav a:hover {
+    margin-right: 0;
+  }
+
+  .slide:hover img {
+    transform: scale(1.02); /* même scale que l’état normal */
+  }
+
+  .btn.view_site:hover {
+    filter: none;
+  }
+
+  .works_circle:hover {
+    animation-play-state: running;
+  }
+}
+
+
+
 
 
 

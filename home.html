@@ -9,6 +9,10 @@
 </head>
 <body>
 <div class="custom-cursor"></div>
+<div class="grain-overlay" aria-hidden="true"></div>
+<!-- BACKGROUND PREVIEW -->
+
+
 <div id="app">
   <div class="app-rail">
     <!-- ====== VIEW: HOME ====== -->
@@ -27,18 +31,20 @@ With a background in cinema, I love giving websites a bit of storytelling flair 
       </div>
       <img src="img/works_circle.png" alt="" class="works_circle">
 
+     
+
       <!-- Slider projets (home) -->
       <div class="sliders_works" aria-label="Selected works">
         <div class="slides_track">
-          <a class="slide" href="/project-1" data-color="#8FB4BF" data-fg="#fff"
+          <a class="slide" href="/project-1" data-color="#8FB4BF" data-fg="#fff" 
              data-title="BRENDA"
              data-desc="Brenda is a premium production agency based in Paris, specializing in high-end event and fashion set management. Known for its sharp sense of style and flawless execution, the brand supports luxury photoshoots and fashion campaigns with a refined, human touch. || I designed Brenda’s full visual direction — from logo and identity to a sleek, Webflow-built website. The goal was to capture the brand’s effortless elegance and professional precision through minimalist design and smooth, cinematic interactions."
-             data-images="img/brenda-1.jpg|img/brenda-2.jpg|img/brenda-3.jpg|img/brenda-4.jpg"
+             data-images="video/BRENDA_WEBSITE.mp4|img/brenda-1.jpg|img/brenda-2.jpg|img/brenda-3.jpg|img/brenda-4.jpg"
              data-url="https://brendaprod.webflow.io/"> 
             <img src="img/work-1.jpg" alt="Work 1 – Ecommerce">
           </a>
 
-          <a class="slide" href="/project-2" data-color="#083132" data-fg="#E60000"
+          <a class="slide" href="/project-2" data-color="#0f3b3d" data-fg="#E60000" data-project="ardko"
              data-title="ARDKO"
              data-desc="This Webflow site was created for a rap artist with a dark, atmospheric identity. The visual direction centered on contrast, tension, and mood — blending minimal layouts with a sharp, moody aesthetic.||I designed the logo, handled the full art direction, and built the site in Webflow with custom animations and transitions to enhance the artist’s dark visual universe."
              data-images="video/Composition 1.mp4|img/ardko03.gif|img/ardko01.png|img/work-2.jpg"
@@ -51,7 +57,7 @@ With a background in cinema, I love giving websites a bit of storytelling flair 
    data-color="#B6C1B3" data-fg="#F5FFF4"
    data-title="PORTFOLIO 23'"
    data-desc="My 2023 portfolio was built as a motion-driven interface — responsive, animated, and lightweight. The goal was to push fluid transitions and micro-interactions to demonstrate a more technical, front-end-focused approach to art direction.||I handled the full design system and built the entire site in Webflow, using custom interactions, controlled timings, and optimized assets. The project received an Honorable Mention from Awwwards."
-   data-images="img/pf01.png|img/pf03.jpg|img/pf04.jpg|img/pf06.jpg|img/pf07.jpg"
+   data-images="video/PF23_WEBSITE.mp4|img/pf01.png|img/pf03.jpg|img/pf04.jpg|img/pf06.jpg|img/pf07.jpg"
    data-url="https://sonny-vizion.webflow.io/" 
    data-fx="cards"
    data-fx-images="img/fx/GREEN_CARD.png|img/fx/awwward.png"
@@ -72,6 +78,19 @@ With a background in cinema, I love giving websites a bit of storytelling flair 
    data-fx-count="8">
 
   <img src="img/work-4.jpg" alt="Work 4 – Motion">
+</a>
+
+<a class="slide" href="/project-5"
+   data-color="#000000" data-fg="#ffffff"
+   data-title="HOLORA"
+   data-desc="Holora is a 2025 Pokémon TCG e-commerce brand built on Shopify. The visual direction blends playful colors, clean structure, and a modern collector vibe — shaped closely alongside the client (who, let's be honest, had the final say… I'm not exactly the biggest Pokémon fan).||I designed the logo, worked on the full art direction, and developed the entire Shopify store with a focus on clarity, performance, and a smooth shopping experience."
+   data-images="video/HOLORA_WEBSITE.mp4|img/holora-2.jpg|img/holora-3.jpg|img/work-5.jpg"
+   data-url="https://holora.net/"
+   data-fx="holora"
+   data-fx-images="img/fx/rougail/saucisse.png|img/fx/rougail/saucisse_rondelle.png|img/fx/rougail/saucisse.png"
+   data-fx-count="8">
+
+  <img src="img/work-5.jpg" alt="Work 4 – Motion">
 </a>
         </div>
       </div>
@@ -139,7 +158,32 @@ let me know !</p>
 <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
 <!-- Ton script -->
 <script src="js/script.js" defer></script>
+  <!-- Filtre SVG pour l'effet glitch RGB -->
+  <svg width="0" height="0" aria-hidden="true" focusable="false" style="position:absolute;">
+    <filter id="rgb-split">
+      <!-- base -->
+      <feColorMatrix type="matrix"
+        values="1 0 0 0 0
+                0 1 0 0 0
+                0 0 1 0 0
+                0 0 0 1 0"
+        result="original" />
 
+      <!-- décale un peu vers le rouge -->
+      <feOffset in="original" dx="-1" dy="0" result="red" />
+
+      <!-- ne garde que le canal rouge -->
+      <feColorMatrix in="red" type="matrix"
+        values="1 0 0 0 0
+                0 0 0 0 0
+                0 0 0 0 0
+                0 0 0 1 0"
+        result="redChannel" />
+
+      <!-- mélange l’original + le rouge décalé -->
+      <feBlend mode="screen" in="original" in2="redChannel" />
+    </filter>
+  </svg>
 
     
 </body>
