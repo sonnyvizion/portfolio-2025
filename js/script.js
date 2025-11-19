@@ -20,7 +20,15 @@
   const projectTitle      = projectView.querySelector('.project_title');
   const projectDesc       = projectView.querySelector('.project_desc');
   const projectSliderWrap = projectView.querySelector('.sliders_project');
-  
+
+  const isTouchDevice =
+  window.matchMedia('(pointer: coarse)').matches ||
+  window.matchMedia('(max-width: 1024px)').matches;
+
+  const isTouchOrSmall =
+  window.matchMedia('(pointer: coarse)').matches ||
+  window.matchMedia('(max-width: 1024px)').matches;
+
 
   // Lightbox (overlay plein écran)
   const lightbox        = document.querySelector('.lightbox');
@@ -323,29 +331,30 @@
   }
 
   function playEffectForSlide(slide, parentSection){
-    if (!slide) return;
-    ensureFxLayer(parentSection || homeView);
+  // 🔴 Désactivation complète des FX sur mobile / tablette
+  if (isTouchOrSmall) return;
 
-    const switchToken = ++_fxSwitchToken;
+  ensureFxLayer(parentSection);
+  const switchToken = ++_fxSwitchToken;
 
-    clearEffect(false, 700).then(() => {
-      if (switchToken !== _fxSwitchToken) return;
+  clearEffect(false, 700).then(() => {
+    if (switchToken !== _fxSwitchToken) return;
 
+    requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          if (!fxLayer || !homeSlider) return;
-          const layerRect  = fxLayer.getBoundingClientRect();
-          const sliderRect = homeSlider.getBoundingClientRect();
-          if (!layerRect.width || !sliderRect.width) return;
+        const layerRect  = fxLayer.getBoundingClientRect();
+        const sliderRect = homeSlider.getBoundingClientRect();
+        if (!layerRect.width || !sliderRect.width) return;
 
-          const make = buildFx(slide);
-          if (!make) return;
+        const make = buildFx(slide);
+        if (!make) return;
 
-          currentTL = make();
-        });
+        currentTL = make();
       });
     });
-  }
+  });
+}
+
 
   // ===== LIGHTBOX PROJET (image + vidéo) =====
   function showLightbox() {
@@ -724,7 +733,11 @@
   projectView.style.backgroundColor = projectBaseBG;
 
   enableMousePan(homeSlider, homeTrack);
+  // Thème + FX uniquement sur desktop
+if (!isTouchDevice) {
   enableHoverTheme(homeSlides, heroHome, homeView);
+}
+
 
   homeSlides.forEach(slide => {
     slide.addEventListener('click', e => {
@@ -1105,3 +1118,50 @@ document.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('mousemove', onMouseMove);
   requestAnimationFrame(animate);
 });
+
+// ==== PRELOADER (home qui monte en même temps) ====
+(() => {
+  const preloader = document.getElementById('preloader');
+  const appRail   = document.querySelector('.app-rail');
+
+  if (!preloader || !appRail || typeof gsap === 'undefined') return;
+
+  const percentEl = preloader.querySelector('.preloader__percent');
+  const counter   = { value: 0 };
+
+  // On place le rail SOUS le viewport au tout début
+  gsap.set(appRail, { yPercent: 100 });
+
+  window.addEventListener('load', () => {
+    const tl = gsap.timeline();
+
+    // 1) 0% -> 100% sur ~2.2s
+    tl.to(counter, {
+      value: 100,
+      duration: 2.2,            // ajuste 2–3s si tu veux
+      ease: 'power2.out',
+      onUpdate() {
+        percentEl.textContent = `${Math.round(counter.value)}%`;
+      }
+    });
+
+    // 2) en même temps :
+    //    - le loader glisse vers le haut
+    //    - la home (app-rail) remonte du bas vers sa position normale
+    tl.to(preloader, {
+      yPercent: -100,
+      duration: 1.0,
+      ease: 'power3.inOut',
+      onComplete() {
+        preloader.remove();     // on le supprime une fois sorti
+      }
+    }, "-=0.3");                // petit chevauchement avec la fin du pourcentage
+
+    tl.to(appRail, {
+      yPercent: 0,
+      duration: 1.0,
+      ease: 'power3.inOut'
+    }, "<");                    // "<" = commence en même temps que le mouvement du loader
+  });
+})();
+

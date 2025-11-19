@@ -89,6 +89,77 @@ h1, nav {
 
 /* Sur mobile / tablette (pointer grossier), on remet le comportement normal */
 
+/* ===== PRELOADER ===== */
+
+.preloader {
+  font-family: 'Formula';
+  position: fixed;
+  inset: 0;
+  background: #ffffff;              /* même ton que ta home */
+  color: #845351;
+  z-index: 20000;                   /* au-dessus de tout */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  transform: translateY(0);         /* point de départ */
+}
+
+.preloader__inner {
+  text-align: center;
+  font-family: "PP Neue Montreal", system-ui, -apple-system, sans-serif;
+}
+
+.preloader__label {
+  font-family: "PP Neue Montreal";
+  display: block;
+  font-size: 0.9rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  margin-bottom: 0.8rem;
+  opacity: 0.8;
+}
+
+.preloader__label_01 {
+  font-family: 'Formula';
+  font-weight: 700;
+  display: block;
+  font-size: 4rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  margin-bottom: 0px;
+  opacity: 0.8;
+}
+.preloader__label_02 {
+  font-family: 'Formula';
+  font-weight: 700;
+  display: block;
+  font-size: 2rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  margin-bottom: 2rem;
+  margin-top: -1rem;
+  opacity: 0.8;
+}
+
+.preloader__percent {
+  font-family: 'Formula';
+  display: block;
+  font-size: 2.6rem;
+  font-weight: 700;
+}
+
+/* un peu plus gros sur mobile */
+@media (max-width: 700px) {
+  .preloader__label {
+    font-size: 0.75rem;
+    letter-spacing: 0.22em;
+  }
+  .preloader__percent {
+    font-size: 2.2rem;
+  }
+}
+
 
 /* Notre petit cercle */
 .custom-cursor {
@@ -392,6 +463,11 @@ nav {
     /*color: #fff;*/
     text-transform: uppercase;
     cursor: pointer;
+    transition: margin-right .3s ease ;
+}
+
+.back_to_home:hover {
+  margin-right: .5vw;
 }
 
 nav a {
@@ -637,6 +713,10 @@ nav a:hover {
   margin-top: 15%;
 }
 
+.txt_a {
+  text-align: right;
+}
+
 .envoyer_contact {
   color: #845351;
   font-family: 'PP Neue Montreal';
@@ -645,6 +725,11 @@ nav a:hover {
   font-size: 2em;
   margin-top: 5%;
   text-decoration: underline;
+  transition: margin-right .3s ease ;
+}
+
+.envoyer_contact:hover {
+  margin-right: 0.4vw;
 }
 
 .contact-close {
@@ -653,6 +738,11 @@ nav a:hover {
   font-weight: 700;
   text-align: right;
   font-size: 2em;
+  transition: rotate .3s ease ;
+}
+
+.contact-close:hover {
+  rotate: 90deg;
 }
 
 .insta {
@@ -665,7 +755,12 @@ nav a:hover {
   position: absolute;
   bottom: -120%;
   right: 5%;
+  transition: margin-right .3s ease ;
 
+}
+
+.insta:hover {
+  margin-right: 0.4vw;
 }
 
 @media (prefers-reduced-motion: reduce){
@@ -838,10 +933,14 @@ body.glitch-active::after {
 
 
 
+
+
 /* ===========================
    RESPONSIVE TABLETTE
    =========================== */
 @media (max-width: 1024px) {
+
+
 
   /* Le rail peut être un peu plus souple */
   .view {
@@ -850,7 +949,7 @@ body.glitch-active::after {
   }
 
   nav {
-    font-size: 1rem;
+    font-size: 2rem;
     padding: 1rem 1.5rem;
   }
 
@@ -865,7 +964,7 @@ body.glitch-active::after {
   }
 
   .headline {
-    font-size: 22vw;
+    font-size: 28vw;
   }
 
   .project_title {
@@ -910,7 +1009,7 @@ body.glitch-active::after {
 
   .project_p1,
   .project_p2 {
-    width: 60%;
+    width: 85%;
     margin-right: 0;
   }
 
@@ -937,7 +1036,7 @@ body.glitch-active::after {
 
   /* Drawer contact pleine largeur sur petit écran */
   .contact-panel {
-    width: 100vw;
+    width: 70vw;
   }
 }
 
@@ -946,8 +1045,16 @@ body.glitch-active::after {
    =========================== */
 @media (max-width: 768px) {
 
+    .preloader__label_01 {
+  font-size: 2rem;
+}
+.preloader__label_02 {
+  font-size: 1rem;
+  margin-top: -0.5rem;
+}
+
   nav {
-    font-size: 0.9rem;
+    font-size: 1rem;
     padding: 0.85rem 1.25rem;
   }
 
@@ -960,13 +1067,18 @@ body.glitch-active::after {
     letter-spacing: -0.1vw;
   }
 
+  .headline {
+    font-size: 30vw;
+  }
+
+
   p {
     font-size: 0.9rem;
     line-height: 1.4;
   }
 
   .sub_txt {
-    width: 100%;
+    width: 85%;
     max-width: none;
     margin-top: 1.25rem;
   }
