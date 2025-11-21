@@ -58,7 +58,7 @@
 /* (Optionnel mais recommandé) si tu utilises aussi une version normale : */
 @font-face {
   font-family: 'PP Formula';
-  src: url('/fonts/PPFormula-CondensedLight.woff2') format('woff2');
+  src: url('./fonts/PPFormula-CondensedLight.woff2') format('woff2');
   font-weight: 300;
   font-style: normal;
   font-display: swap;
@@ -66,7 +66,7 @@
 
 @font-face {
   font-family: 'Formula';
-  src: url('/fonts/PPFormula-CondensedLightItalic.woff2') format('woff2');
+  src: url('./fonts/PPFormula-CondensedLightItalic.woff2') format('woff2');
   font-weight: 300;
   font-style: normal;
   font-display: swap;
@@ -964,7 +964,7 @@ body.glitch-active::after {
   }
 
   .headline {
-    font-size: 28vw;
+    font-size: 22vw;
   }
 
   .project_title {
@@ -1068,7 +1068,7 @@ body.glitch-active::after {
   }
 
   .headline {
-    font-size: 30vw;
+    font-size: 22vw;
   }
 
 
