@@ -943,9 +943,6 @@ body.glitch-active::after {
    =========================== */
 @media (max-width: 1024px) {
 
-
-
-  /* Le rail peut être un peu plus souple */
   .view {
     min-height: 100vh;
     height: auto;
@@ -958,7 +955,7 @@ body.glitch-active::after {
 
   .container {
     padding: 4.5rem 1.75rem;
-    height: auto;           /* laisse respirer le contenu */
+    height: auto;
     min-height: 60vh;
   }
 
@@ -983,24 +980,28 @@ body.glitch-active::after {
     max-width: 38rem;
   }
 
-  /* Slider home & projet : plus haut, scroll horizontal possible */
+  /* Slider home & projet : scroll horizontal + snap */
   .sliders_works,
   .sliders_project {
     height: 40vh;
     overflow-x: auto;
     overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;      /* 👈 évite le scroll qui part dans toute la page */
+    scroll-snap-type: x mandatory;       /* 👈 snap horizontal */
   }
 
   .slides_track,
   .project_track {
     width: max-content;
+    display: flex;                        /* sécurité */
   }
 
   .slide,
   .sliders_project .slide,
   .project_track .slide {
     flex: 0 0 55vw;
+    scroll-snap-align: start;             /* 👈 chaque carte “accroche” au bord gauche */
   }
 
   /* 2 paragraphes projet en colonne */
@@ -1016,7 +1017,6 @@ body.glitch-active::after {
     margin-right: 0;
   }
 
-  /* CTA projet */
   .project_cta {
     padding: 1.5rem 1.75rem 2rem;
     justify-content: flex-start;
@@ -1029,7 +1029,6 @@ body.glitch-active::after {
     margin: auto;
   }
 
-  /* Cercle “works” plus petit et recentré */
   .works_circle {
     width: 12vw;
     bottom: 32vh;
@@ -1037,24 +1036,24 @@ body.glitch-active::after {
     right: 5vw;
   }
 
-  /* Drawer contact pleine largeur sur petit écran */
   .contact-panel {
     width: 70vw;
   }
 }
+
 
 /* ===========================
    RESPONSIVE MOBILE
    =========================== */
 @media (max-width: 768px) {
 
-    .preloader__label_01 {
-  font-size: 2rem;
-}
-.preloader__label_02 {
-  font-size: 1rem;
-  margin-top: -0.5rem;
-}
+  .preloader__label_01 {
+    font-size: 2rem;
+  }
+  .preloader__label_02 {
+    font-size: 1rem;
+    margin-top: -0.5rem;
+  }
 
   nav {
     font-size: 1rem;
@@ -1070,10 +1069,13 @@ body.glitch-active::after {
     letter-spacing: -0.1vw;
   }
 
+  .contact-panel {
+    width: 85vw;
+  }
+
   .headline {
     font-size: 22vw;
   }
-
 
   p {
     font-size: 0.9rem;
@@ -1089,12 +1091,14 @@ body.glitch-active::after {
   .sliders_works,
   .sliders_project {
     height: 40vh;
+    /* on garde les props du breakpoint 1024 (overflow, snap, etc.) */
   }
 
   .slide,
   .sliders_project .slide,
   .project_track .slide {
-    flex: 0 0 75vw;
+    flex: 0 0 75vw;          /* cartes un peu plus larges */
+    scroll-snap-align: start;
   }
 
   .project_desc {
@@ -1112,20 +1116,10 @@ body.glitch-active::after {
     margin: auto;
   }
 
-  /* cercle : option 1 → plus petit
-  .works_circle {
-    width: 18vw;
-    bottom: 38vh;
-    right: 6vw;
-  }
-  */
-
-  /* cercle : option 2 → tu peux le cacher si tu préfères épurer */
   .works_circle {
     display: none;
   }
 
-  /* Drawer contact : texte un peu plus petit */
   .contact_txt {
     font-size: 1.5rem;
   }
@@ -1137,6 +1131,7 @@ body.glitch-active::after {
     bottom: -60%;
   }
 }
+
 
 /* ===========================
    DÉSACTIVER LES HOVER SUR MOBILE/TABLETTE
