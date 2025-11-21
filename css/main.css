@@ -117,6 +117,7 @@ h1, nav {
 
 .preloader__label_01 {
  font-family: 'PP Formula';
+ font-style: italic;
   font-weight: 700;
   display: block;
   font-size: 4rem;
@@ -127,6 +128,7 @@ h1, nav {
 }
 .preloader__label_02 {
   font-family: 'PP Formula';
+  font-style: italic;
   font-weight: 700;
   display: block;
   font-size: 2rem;
@@ -139,6 +141,7 @@ h1, nav {
 
 .preloader__percent {
   font-family: 'PP Formula';
+  font-style: italic;
   display: block;
   font-size: 2.6rem;
   font-weight: 700;
@@ -418,16 +421,20 @@ h1, h2, h3, h4, h5, h6 {
   font-size: inherit;
 }
 
+.headline {
+  font-style: italic;
+}
 
 h1 {
   font-family: 'PP Formula', 'PP Neue Montreal', system-ui, -apple-system, sans-serif;
+  font-style: italic;
   font-weight: 300;
   font-size: 16vw;
   color: #fff;
   text-transform: uppercase;
   line-height: 100%;
   letter-spacing: -0.2vw;
-  font-style: italic;
+  
 }
 
 
