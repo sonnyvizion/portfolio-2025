@@ -34,6 +34,9 @@
   window.matchMedia('(pointer: coarse)').matches ||
   window.matchMedia('(max-width: 1024px)').matches;
 
+  let projectPanInstance = null;
+
+
 
   // Lightbox (overlay plein écran)
   const lightbox        = document.querySelector('.lightbox');
@@ -80,40 +83,61 @@
   }
 
   // ====== Pan (mousemove) ======
-    function enableMousePan(container, track) {
-    // Sur mobile / tablette : pas de pan à la souris, on laisse le scroll natif
-    if (isCoarsePointer || !container || !track || typeof gsap === 'undefined') {
-      return { enable(){}, disable(){}, isEnabled(){ return false; } };
-    }
-
-    let enabled = true;
-    const toX = gsap.quickTo(track, "x", { duration: 0.6, ease: "power3.out" });
-    gsap.set(track, { x: 0 });
-
-    function getMaxX() {
-      const max = Math.max(0, track.scrollWidth - container.clientWidth);
-      return -max;
-    }
-    function onMove(e) {
-      if (!enabled) return;
-      const rect = container.getBoundingClientRect();
-      const relX = (e.clientX - rect.left) / rect.width;
-      const target = getMaxX() * relX;
-      toX(target);
-    }
-    const onLeave  = () => enabled && toX(0);
-    const onResize = () => enabled && toX(0);
-
-    container.addEventListener('mousemove', onMove, { passive: true });
-    container.addEventListener('mouseleave', onLeave, { passive: true });
-    window.addEventListener('resize', onResize);
-
-    return {
-      enable(){ enabled = true; },
-      disable(){ enabled = false; },
-      isEnabled(){ return enabled; }
-    };
+  // ====== Pan (mousemove) ======
+function enableMousePan(container, track) {
+  // Sur mobile / tablette : pas de pan à la souris, on laisse le scroll natif
+  if (isCoarsePointer || !container || !track || typeof gsap === 'undefined') {
+    return { enable(){}, disable(){}, isEnabled(){ return false; } };
   }
+
+  let enabled = true;
+
+  // On NE remet plus systématiquement à 0 : on lit la valeur courante
+  const currentTransform = getComputedStyle(track).transform;
+  let startX = 0;
+
+  if (currentTransform && currentTransform !== 'none') {
+    const matrix = new DOMMatrix(currentTransform);
+    startX = matrix.m41 || 0;
+  }
+
+  const toX = gsap.quickTo(track, "x", { duration: 0.6, ease: "power3.out" });
+  gsap.set(track, { x: startX });
+
+  function getMaxX() {
+    const max = Math.max(0, track.scrollWidth - container.clientWidth);
+    return -max;
+  }
+
+  function onMove(e) {
+    if (!enabled) return;
+    const rect = container.getBoundingClientRect();
+    const relX = (e.clientX - rect.left) / rect.width;
+    const target = getMaxX() * relX;
+    toX(target);
+  }
+
+  // 🔴 On ne remet plus le slider à 0 quand la souris sort
+  const onLeave  = () => {};
+  const onResize = () => {
+    // on recalcule juste le max mais on ne force pas à 0
+    const rect = container.getBoundingClientRect();
+    const relX = 0.5; // place globalement au milieu si tu redimensionnes
+    const target = getMaxX() * relX;
+    toX(target);
+  };
+
+  container.addEventListener('mousemove', onMove, { passive: true });
+  container.addEventListener('mouseleave', onLeave, { passive: true });
+  window.addEventListener('resize', onResize);
+
+  return {
+    enable(){ enabled = true; },
+    disable(){ enabled = false; },
+    isEnabled(){ return enabled; }
+  };
+}
+
 
 
   // === FX Layer ==========================================================
@@ -695,7 +719,10 @@
     }
 
 
-    enableMousePan($('.sliders_project', projectView), projectTrack);
+    if (!projectPanInstance) {
+  projectPanInstance = enableMousePan($('.sliders_project', projectView), projectTrack);
+}
+
 
     const btn = projectView.querySelector('.btn.view_site');
     if (btn) {
@@ -1192,38 +1219,6 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 })();
 
-// === SLIDER LOOP MOBILE ===
-(() => {
-  const isMobile = window.matchMedia("(max-width: 1024px)").matches;
-
-  if (!isMobile) return; // desktop = pas de loop
-
-  const sliders = document.querySelectorAll(".sliders_works, .sliders_project");
-
-  sliders.forEach(slider => {
-    const track = slider.querySelector(".slides_track, .project_track");
-    if (!track) return;
-
-    const slides = [...track.children];
-
-    // On duplique les slides pour créer une boucle visuelle
-    slides.forEach(slide => {
-      const clone = slide.cloneNode(true);
-      clone.classList.add("clone");
-      track.appendChild(clone);
-    });
-
-    // Pour éviter un défilement infini réel (bounce iOS)
-    slider.addEventListener("scroll", () => {
-      const maxScroll = track.scrollWidth / 2;
-      const current = slider.scrollLeft;
-
-      // si on dépasse la 1ère moitié → on revient dans la zone originale
-      if (current >= maxScroll) {
-        slider.scrollLeft = current - maxScroll;
-      }
-    });
-  });
 
   // === MEMOIRE DE POSITION DES SLIDERS (home + projet) ===
 
@@ -1296,5 +1291,5 @@ document.addEventListener('DOMContentLoaded', () => {
 
 })();
 
-})();
+
 
