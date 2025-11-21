@@ -2,6 +2,7 @@
   --cursor-color: #000;
 }
 
+/* ========== PP NEUE MONTREAL ========== */
 @font-face {
   font-family: 'PP Neue Montreal';
   src: url('../fonts/ppneuemontreal-thin.woff2') format('woff2');
@@ -61,6 +62,7 @@
   font-style: normal;
   font-display: swap;
 }
+
 
 
 html, body {
