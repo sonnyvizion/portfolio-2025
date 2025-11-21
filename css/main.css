@@ -413,7 +413,6 @@ button, input, textarea, select {
 html, body {
   height: 100%;
   width: 100%;
-  font-family: sans-serif;
   background-color: #fff;
   color: #000;
 }
@@ -840,7 +839,7 @@ nav a:hover {
   pointer-events: none;
   z-index: 999; /* en dessous du curseur custom */
 
-  background-image: url("/img/static-tv-static.gif"); /* ton GIF */
+  background-image: url("./img/static-tv-static.gif"); /* ton GIF */
   background-repeat: repeat;
   background-size: 200px 200px;  /* ajuste la taille du grain ici */
 
