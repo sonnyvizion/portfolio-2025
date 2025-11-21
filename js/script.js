@@ -679,6 +679,9 @@
       appRail.style.transform = 'translateY(-100%)';
     }
 
+    window.dispatchEvent(new Event("view-project-open"));
+
+
     document.documentElement.style.setProperty('--cursor-color', projectFG);
 
     if (isHolora) {
@@ -735,6 +738,9 @@
       const homeFG = cs.getPropertyValue('--fg').trim() || cs.color || autoContrast(homeBG);
       document.documentElement.style.setProperty('--cursor-color', homeFG);
     }
+
+    window.dispatchEvent(new Event("view-home-open"));
+
   }
 
   // ===== Init comportements =====
@@ -1218,5 +1224,77 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   });
+
+  // === MEMOIRE DE POSITION DES SLIDERS (home + projet) ===
+
+(() => {
+  const sliders = {
+    home: {
+      el: document.querySelector(".sliders_works"),
+      track: document.querySelector(".slides_track"),
+      pos: 0
+    },
+    project: {
+      el: document.querySelector(".sliders_project"),
+      track: document.querySelector(".project_track"),
+      pos: 0
+    }
+  };
+
+  // --- 1) Écouter le scroll mobile ---
+  function trackScroll(key) {
+    const slider = sliders[key];
+    if (!slider || !slider.el) return;
+
+    slider.el.addEventListener("scroll", () => {
+      slider.pos = slider.el.scrollLeft;
+    }, { passive: true });
+  }
+
+  // --- 2) Écouter le pan GSAP desktop ---
+  function trackPan(key) {
+    const slider = sliders[key];
+    if (!slider || !slider.track) return;
+
+    let lastX = 0;
+    const obs = new MutationObserver(() => {
+      const style = getComputedStyle(slider.track);
+      const matrix = new WebKitCSSMatrix(style.transform);
+      lastX = matrix.m41;
+      slider.pos = lastX;
+    });
+
+    obs.observe(slider.track, { attributes: true, attributeFilter: ["style"] });
+  }
+
+  // --- 3) Restaurer la position au moment où la vue apparaît ---
+  function restorePosition(key) {
+    const slider = sliders[key];
+    if (!slider || !slider.el || !slider.track) return;
+
+    requestAnimationFrame(() => {
+      // mobile
+      if (window.matchMedia("(pointer: coarse)").matches) {
+        slider.el.scrollLeft = slider.pos;
+      } 
+      // desktop gsap-pan
+      else {
+        gsap.set(slider.track, { x: slider.pos });
+      }
+    });
+  }
+
+  // --- Init écouteurs ---
+  trackScroll("home");
+  trackScroll("project");
+  trackPan("home");
+  trackPan("project");
+
+  // --- Hook navigation vue → rappeler la position ---
+  window.addEventListener("view-project-open", () => restorePosition("project"));
+  window.addEventListener("view-home-open", () => restorePosition("home"));
+
+})();
+
 })();
 
