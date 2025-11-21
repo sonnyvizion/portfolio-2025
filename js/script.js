@@ -1186,3 +1186,37 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 })();
 
+// === SLIDER LOOP MOBILE ===
+(() => {
+  const isMobile = window.matchMedia("(max-width: 1024px)").matches;
+
+  if (!isMobile) return; // desktop = pas de loop
+
+  const sliders = document.querySelectorAll(".sliders_works, .sliders_project");
+
+  sliders.forEach(slider => {
+    const track = slider.querySelector(".slides_track, .project_track");
+    if (!track) return;
+
+    const slides = [...track.children];
+
+    // On duplique les slides pour créer une boucle visuelle
+    slides.forEach(slide => {
+      const clone = slide.cloneNode(true);
+      clone.classList.add("clone");
+      track.appendChild(clone);
+    });
+
+    // Pour éviter un défilement infini réel (bounce iOS)
+    slider.addEventListener("scroll", () => {
+      const maxScroll = track.scrollWidth / 2;
+      const current = slider.scrollLeft;
+
+      // si on dépasse la 1ère moitié → on revient dans la zone originale
+      if (current >= maxScroll) {
+        slider.scrollLeft = current - maxScroll;
+      }
+    });
+  });
+})();
+
