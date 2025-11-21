@@ -1,6 +1,11 @@
 // js/script.js
 
 (() => {
+
+    // Base path (support GitHub Pages sous /portfolio-2025/)
+  const basePath = window.location.pathname.replace(/[^/]*$/, ''); 
+  // ex: "/portfolio-2025/" au lieu de "/portfolio-2025/project-1"
+
   // ====== Sélecteurs principaux ======
   const appRail     = document.querySelector('.app-rail');
   const homeView    = document.querySelector('.view--home');
@@ -680,9 +685,12 @@
       document.body.classList.add('is-project-holora', 'glitch-active');
     }
 
-    if (data.href && history && history.pushState) {
-      history.pushState({ view: 'project', href: data.href }, '', data.href);
+        if (data.href && history && history.pushState) {
+      const slug = data.href.replace(/^\//, '');       // "project-1"
+      const url  = basePath + slug;                   // "/portfolio-2025/project-1"
+      history.pushState({ view: 'project', href: slug }, '', url);
     }
+
 
     enableMousePan($('.sliders_project', projectView), projectTrack);
 
@@ -709,9 +717,10 @@
     }
 
     projectView.hidden = true;
-    if (history && history.pushState) {
-      history.pushState({ view: 'home' }, '', '/');
+        if (history && history.pushState) {
+      history.pushState({ view: 'home' }, '', basePath);
     }
+
 
     document.body.classList.remove(
       'is-project-ardko',
@@ -783,8 +792,11 @@ if (!isTouchDevice) {
   });
 
   // Back/forward navigateur
+    // Back/forward navigateur
   window.addEventListener('popstate', () => {
-    const isHome = location.pathname === '/' || location.pathname === '';
+    // On considère "home" = basePath (ex: "/portfolio-2025/")
+    const isHome = location.pathname === basePath;
+
     if (isHome) {
       projectView.hidden = true;
       if (typeof gsap !== 'undefined') {
@@ -801,7 +813,15 @@ if (!isTouchDevice) {
       return;
     }
 
-    const target = [...homeSlides].find(s => s.getAttribute('href') === location.pathname);
+    // On récupère juste le "slug" final: "project-1"
+    const pathSlug = location.pathname.split('/').filter(Boolean).pop();
+
+    const target = [...homeSlides].find(s => {
+      const href = s.getAttribute('href') || '';
+      const slug = href.split('/').filter(Boolean).pop();
+      return slug === pathSlug;
+    });
+
     if (target) {
       const data = parseSlideData(target);
       fillProjectView(data);
@@ -811,7 +831,6 @@ if (!isTouchDevice) {
       } else {
         appRail.style.transform = 'translateY(-100%)';
       }
-      enableMousePan($('.sliders_project', projectView), projectTrack);
 
       const isArdko  = (data.projectId || '').toLowerCase() === 'ardko';
       const isHolora =
@@ -836,6 +855,7 @@ if (!isTouchDevice) {
         else btn._marqueeRecalc && btn._marqueeRecalc();
       }
     } else {
+      // Pas de slide trouvée → on reste sur la vue projet mais on nettoie les classes globales
       projectView.hidden = false;
       if (typeof gsap !== 'undefined') {
         gsap.set(appRail, { yPercent: -100 });
@@ -850,6 +870,7 @@ if (!isTouchDevice) {
       );
     }
   });
+
 
   window.addEventListener('load', () => {
     forcePaint(homeSlider);

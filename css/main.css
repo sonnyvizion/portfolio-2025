@@ -46,7 +46,7 @@
   font-display: swap;
 }
 
-/* ========== PP FORMULA (au moins la variante que tu utilises) ========== */
+/* ========== PP FORMULA ========== */
 @font-face {
   font-family: 'PP Formula';
   src: url('./fonts/PPFormula-CondensedLightItalic.woff2') format('woff2');
@@ -55,7 +55,6 @@
   font-display: swap;
 }
 
-/* (Optionnel mais recommandé) si tu utilises aussi une version normale : */
 @font-face {
   font-family: 'PP Formula';
   src: url('./fonts/PPFormula-CondensedLight.woff2') format('woff2');
@@ -64,13 +63,6 @@
   font-display: swap;
 }
 
-@font-face {
-  font-family: 'Formula';
-  src: url('./fonts/PPFormula-CondensedLightItalic.woff2') format('woff2');
-  font-weight: 300;
-  font-style: normal;
-  font-display: swap;
-}
 
 html, body {
   font-family: 'PP Neue Montreal', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
@@ -81,8 +73,9 @@ html, body {
 
 
 h1, nav {
-  font-family: 'PP Formula', 'PP Neue Montreal', 'Formula', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  font-family: 'PP Formula', 'PP Neue Montreal', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
 }
+
 
 /* On cache le curseur normal */
 
@@ -92,7 +85,7 @@ h1, nav {
 /* ===== PRELOADER ===== */
 
 .preloader {
-  font-family: 'Formula';
+  font-family: 'PP Formula';
   position: fixed;
   inset: 0;
   background: #ffffff;              /* même ton que ta home */
@@ -121,7 +114,7 @@ h1, nav {
 }
 
 .preloader__label_01 {
-  font-family: 'Formula';
+ font-family: 'PP Formula';
   font-weight: 700;
   display: block;
   font-size: 4rem;
@@ -131,7 +124,7 @@ h1, nav {
   opacity: 0.8;
 }
 .preloader__label_02 {
-  font-family: 'Formula';
+  font-family: 'PP Formula';
   font-weight: 700;
   display: block;
   font-size: 2rem;
@@ -143,7 +136,7 @@ h1, nav {
 }
 
 .preloader__percent {
-  font-family: 'Formula';
+  font-family: 'PP Formula';
   display: block;
   font-size: 2.6rem;
   font-weight: 700;
@@ -425,7 +418,7 @@ h1, h2, h3, h4, h5, h6 {
 
 
 h1 {
-    font-family: "Formula";
+  font-family: 'PP Formula', 'PP Neue Montreal', system-ui, -apple-system, sans-serif;
   font-weight: 300;
   font-size: 16vw;
   color: #fff;
@@ -433,6 +426,7 @@ h1 {
   line-height: 100%;
   letter-spacing: -0.2vw;
 }
+
 
 p {
     font-family: "PP Neue Montreal";
@@ -839,7 +833,7 @@ nav a:hover {
   pointer-events: none;
   z-index: 999; /* en dessous du curseur custom */
 
-  background-image: url("./img/static-tv-static.gif"); /* ton GIF */
+   background-image: url("./img/static-tv-static.gif");
   background-repeat: repeat;
   background-size: 200px 200px;  /* ajuste la taille du grain ici */
 
