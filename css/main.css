@@ -90,25 +90,31 @@ h1, nav {
   font-family: 'PP Formula';
   position: fixed;
   inset: 0;
-  background: #ffffff;              /* même ton que ta home */
-  color: #845351;
+  background: #3F4357;              /* même ton que ta home */
+  color: #ffffff;
   z-index: 20000;                   /* au-dessus de tout */
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  transform: translateY(0);         /* point de départ */
+  transform: translateY(0);
+  border-bottom: 2px solid #ffffff;         /* point de départ */
 }
 
 .preloader__inner {
-  text-align: center;
+  display: flex;
+  flex-direction: column;
+  width: 80vw;
+  margin: auto;
+  align-items: center;
+  justify-content: center;
   font-family: "PP Neue Montreal", system-ui, -apple-system, sans-serif;
 }
 
 .preloader__label {
   font-family: "PP Neue Montreal";
   display: block;
-  font-size: 0.9rem;
+  font-size: 0.9em;
   letter-spacing: 0.28em;
   text-transform: uppercase;
   margin-bottom: 0.8rem;
@@ -116,11 +122,11 @@ h1, nav {
 }
 
 .preloader__label_01 {
- font-family: 'PP Formula';
+ font-family: 'PP Neue Montreal';
  font-style: italic;
-  font-weight: 700;
+  font-weight: 400;
   display: block;
-  font-size: 4rem;
+  font-size: 1vw;
   letter-spacing: 0.28em;
   text-transform: uppercase;
   margin-bottom: 0px;
@@ -131,20 +137,20 @@ h1, nav {
   font-style: italic;
   font-weight: 700;
   display: block;
-  font-size: 2rem;
-  letter-spacing: 0.28em;
+  font-size: 20vw !important;
   text-transform: uppercase;
-  margin-bottom: 2rem;
-  margin-top: -1rem;
+  margin-top: -2rem;
   opacity: 0.8;
 }
 
 .preloader__percent {
-  font-family: 'PP Formula';
+  font-family: 'PP Neue Montreal';
   font-style: italic;
+  font-weight: 400;
   display: block;
-  font-size: 2.6rem;
-  font-weight: 700;
+  font-size: 1vw;
+  margin-top: -6rem;
+  
 }
 
 /* un peu plus gros sur mobile */
