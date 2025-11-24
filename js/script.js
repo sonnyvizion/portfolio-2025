@@ -781,13 +781,20 @@ if (!isTouchDevice) {
 }
 
 
-  homeSlides.forEach(slide => {
-    slide.addEventListener('click', e => {
+    // Clic sur les projets (home) – event delegation
+  if (homeSlider) {
+    homeSlider.addEventListener('click', (e) => {
+      // clic spécial (cmd+click, ctrl+click, bouton milieu…) => on laisse le navigateur gérer
       if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+
+      const slide = e.target.closest('.slide');
+      if (!slide || !homeSlider.contains(slide)) return;
+
       e.preventDefault();
       goToProjectFromSlide(slide);
     });
-  });
+  }
+
 
   backBtn?.addEventListener('click', backToHome);
 
