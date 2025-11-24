@@ -1289,7 +1289,80 @@ document.addEventListener('DOMContentLoaded', () => {
   window.addEventListener("view-project-open", () => restorePosition("project"));
   window.addEventListener("view-home-open", () => restorePosition("home"));
 
+  // ===== LOOP INFINI DES SLIDERS SUR MOBILE / TABLETTE =====
+(() => {
+  const isTouchOrSmall =
+    window.matchMedia('(pointer: coarse)').matches ||
+    window.matchMedia('(max-width: 1024px)').matches;
+
+  // On active la boucle uniquement sur mobile / tablette
+  if (!isTouchOrSmall) return;
+
+  function initInfiniteSlider(container, track) {
+    if (!container || !track) return;
+    if (track.dataset.loopInit === '1') return; // déjà initialisé
+
+    const slides = Array.from(track.children);
+    if (slides.length < 2) return; // pas la peine de boucler si 1 seule slide
+
+    // Largeur d'origine AVANT duplication
+    const originalWidth = track.scrollWidth;
+
+    // Duplique chaque slide une fois (on double la longueur)
+    slides.forEach((slide) => {
+      const clone = slide.cloneNode(true);
+      clone.setAttribute('data-clone', '1');
+      track.appendChild(clone);
+    });
+
+    track.dataset.loopInit = '1';
+
+    let lastLeft = container.scrollLeft;
+    let ticking = false;
+
+    function onScroll() {
+      lastLeft = container.scrollLeft;
+      if (ticking) return;
+
+      ticking = true;
+      requestAnimationFrame(() => {
+        const max = originalWidth;
+
+        // si on dépasse la fin du set original → on recule d'une longueur
+        if (lastLeft >= max) {
+          container.scrollLeft = lastLeft - max;
+        }
+        // si jamais on repart trop à gauche, on remonte depuis la fin
+        else if (lastLeft <= 0) {
+          container.scrollLeft = lastLeft + max;
+        }
+
+        ticking = false;
+      });
+    }
+
+    container.addEventListener('scroll', onScroll, { passive: true });
+  }
+
+  // 🟡 HOME : les slides sont déjà là au chargement
+  window.addEventListener('load', () => {
+    const homeContainer = document.querySelector('.sliders_works');
+    const homeTrack     = document.querySelector('.slides_track');
+    initInfiniteSlider(homeContainer, homeTrack);
+  });
+
+  // 🟣 PROJET : les slides sont injectées quand la vue projet s’ouvre
+  window.addEventListener('view-project-open', () => {
+    const projectContainer = document.querySelector('.sliders_project');
+    const projectTrack     = document.querySelector('.project_track');
+    initInfiniteSlider(projectContainer, projectTrack);
+  });
+
 })();
+
+
+})();
+
 
 
 

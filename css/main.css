@@ -156,11 +156,11 @@ h1, nav {
 /* un peu plus gros sur mobile */
 @media (max-width: 700px) {
   .preloader__label {
-    font-size: 0.75rem;
     letter-spacing: 0.22em;
   }
   .preloader__percent {
-    font-size: 2.2rem;
+    font-size: 16px;
+    margin-top : -35px;
   }
 }
 
@@ -1054,10 +1054,10 @@ body.glitch-active::after {
 @media (max-width: 768px) {
 
   .preloader__label_01 {
-    font-size: 2rem;
+    font-size: 16px;
   }
   .preloader__label_02 {
-    font-size: 1rem;
+    font-size: 150px !important;
     margin-top: -0.5rem;
   }
 
