@@ -1,72 +1,113 @@
 // js/script.js
 
+/* =========================================================
+   ROUTER HASH (mode + project)
+   formats:
+   - #web
+   - #video
+   - #web:project-1
+   - #video:video-project-1
+========================================================= */
+function parseAppHash() {
+  const raw = (location.hash || '').replace('#', '').trim();
+  if (!raw) return { mode: 'web', slug: '' };
+
+  const [a, b] = raw.split(':');
+  const mode = (a && a.toLowerCase().startsWith('video')) ? 'video' : 'web';
+  const slug = (b || '').trim();
+  return { mode, slug };
+}
+
+function setHash(mode, slug = '', replace = false) {
+  const m = (mode === 'video') ? 'video' : 'web';
+  const h = slug ? `#${m}:${slug}` : `#${m}`;
+  if (replace) history.replaceState(history.state || {}, '', h);
+  else history.pushState(history.state || {}, '', h);
+}
+
+/* =========================================================
+   MODE SWITCH WEB <-> VIDEO (glisse horizontalement)
+========================================================= */
 (() => {
+  const modesTrack = document.querySelector('.app-modes');
+  if (!modesTrack) return;
 
-    // Base path (support GitHub Pages sous /portfolio-2025/)
-  const basePath = window.location.pathname.replace(/[^/]*$/, ''); 
-  // ex: "/portfolio-2025/" au lieu de "/portfolio-2025/project-1"
+  function setMode(mode, animate = true) {
+    document.body.dataset.mode = mode;
+    const targetX = (mode === 'video') ? -window.innerWidth : 0;
 
-  // ====== Sélecteurs principaux ======
-  const appRail     = document.querySelector('.app-rail');
-  const homeView    = document.querySelector('.view--home');
-  const projectView = document.querySelector('.view--project');
+    if (typeof gsap === 'undefined' || !animate) {
+      modesTrack.style.transform = `translate3d(${targetX}px,0,0)`;
+      return;
+    }
+    gsap.to(modesTrack, { x: targetX, duration: 1.0, ease: "power3.inOut" });
+  }
 
-  if (!appRail || !homeView || !projectView) return;
+  // INIT depuis hash
+  const init = parseAppHash();
+  setMode(init.mode, false);
 
-  const heroHome    = homeView.querySelector('.container');
-  const heroProject = projectView.querySelector('.container');
-  const backBtn     = projectView.querySelector('.back_to_home');
+  // clic nav (webdesign / videomaker)
+  document.addEventListener('click', (e) => {
+    const a = e.target.closest('a.webdesign, a.videomaker');
+    if (!a) return;
 
-  const homeSlider  = document.querySelector('.sliders_works');
-  const homeTrack   = document.querySelector('.slides_track');
-  const homeSlides  = document.querySelectorAll('.slides_track .slide');
+    e.preventDefault();
 
-  const projectTrack      = projectView.querySelector('.project_track');
-  const projectTitle      = projectView.querySelector('.project_title');
-  const projectDesc       = projectView.querySelector('.project_desc');
-  const projectSliderWrap = projectView.querySelector('.sliders_project');
+    if (a.classList.contains('webdesign')) {
+      setHash('web', '', false);
+      setMode('web', true);
+    } else {
+      setHash('video', '', false);
+      setMode('video', true);
+    }
+  });
 
-  const isTouchDevice =
-  window.matchMedia('(pointer: coarse)').matches ||
-  window.matchMedia('(max-width: 1024px)').matches;
+  // back/forward + hash change
+  window.addEventListener('popstate', () => {
+    const s = parseAppHash();
+    setMode(s.mode, true);
+  });
 
-  const isTouchOrSmall =
-  window.matchMedia('(pointer: coarse)').matches ||
-  window.matchMedia('(max-width: 1024px)').matches;
+  window.addEventListener('hashchange', () => {
+    const s = parseAppHash();
+    setMode(s.mode, true);
+  });
 
-  let projectPanInstance = null;
+  window.addEventListener('resize', () => {
+    const s = parseAppHash();
+    setMode(s.mode, false);
+  });
+})();
 
+/* =========================================================
+   INIT PORTFOLIO (scopé par .portfolio)
+========================================================= */
+(() => {
+  const canHover = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+  const isTouchDevice   = !canHover;
+  const isTouchOrSmall  = !canHover;
+  const isCoarsePointer = !canHover;
 
-
-  // Lightbox (overlay plein écran)
-  const lightbox        = document.querySelector('.lightbox');
-  const lightboxContent = lightbox?.querySelector('.lightbox__content');
-
-  const homeBaseBG    = getComputedStyle(homeView).backgroundColor;
-  const projectBaseBG = getComputedStyle(projectView).backgroundColor;
-
-  // ====== Utils ======
-  const $  = (s, el = document) => el.querySelector(s);
-  const $$ = (s, el = document) => [...el.querySelectorAll(s)];
   const forcePaint = (el) => { if (el) void el.offsetHeight; };
-  const isCoarsePointer = window.matchMedia &&
-                          window.matchMedia('(pointer: coarse)').matches;
 
-
-  function autoContrast(bgColor){
+  function autoContrast(bgColor) {
     const toRGB = (c) => {
-      c = c.trim();
-      if (c.startsWith('#')){
+      c = (c || '').trim();
+      if (!c) return { r:0, g:0, b:0 };
+
+      if (c.startsWith('#')) {
         let h = c.slice(1);
-        if (h.length === 3) h = h.split('').map(x=>x+x).join('');
-        const n = parseInt(h,16);
+        if (h.length === 3) h = h.split('').map(x => x + x).join('');
+        const n = parseInt(h, 16);
         return { r:(n>>16)&255, g:(n>>8)&255, b:n&255 };
       }
-      if (c.startsWith('rgb')){
+      if (c.startsWith('rgb')) {
         const m = c.match(/rgba?\(([^)]+)\)/i);
         const p = m ? m[1].split(',').map(v=>parseFloat(v)) : [0,0,0];
         return { r:p[0]||0, g:p[1]||0, b:p[2]||0 };
       }
+
       const tmp = document.createElement('div');
       tmp.style.color = c;
       document.body.appendChild(tmp);
@@ -74,497 +115,72 @@
       document.body.removeChild(tmp);
       return toRGB(cs);
     };
+
     const {r,g,b} = toRGB(bgColor);
     const srgb = [r,g,b].map(v => {
-      v/=255; return v<=0.03928 ? v/12.92 : Math.pow((v+0.055)/1.055, 2.4);
+      v /= 255;
+      return v <= 0.03928 ? v/12.92 : Math.pow((v+0.055)/1.055, 2.4);
     });
     const L = 0.2126*srgb[0] + 0.7152*srgb[1] + 0.0722*srgb[2];
     return L > 0.55 ? '#000000' : '#FFFFFF';
   }
 
-  // ====== Pan (mousemove) ======
-  // ====== Pan (mousemove) ======
-function enableMousePan(container, track) {
-  // Sur mobile / tablette : pas de pan à la souris, on laisse le scroll natif
-  if (isCoarsePointer || !container || !track || typeof gsap === 'undefined') {
-    return { enable(){}, disable(){}, isEnabled(){ return false; } };
-  }
-
-  let enabled = true;
-
-  // On NE remet plus systématiquement à 0 : on lit la valeur courante
-  const currentTransform = getComputedStyle(track).transform;
-  let startX = 0;
-
-  if (currentTransform && currentTransform !== 'none') {
-    const matrix = new DOMMatrix(currentTransform);
-    startX = matrix.m41 || 0;
-  }
-
-  const toX = gsap.quickTo(track, "x", { duration: 0.6, ease: "power3.out" });
-  gsap.set(track, { x: startX });
-
-  function getMaxX() {
-    const max = Math.max(0, track.scrollWidth - container.clientWidth);
-    return -max;
-  }
-
-  function onMove(e) {
-    if (!enabled) return;
-    const rect = container.getBoundingClientRect();
-    const relX = (e.clientX - rect.left) / rect.width;
-    const target = getMaxX() * relX;
-    toX(target);
-  }
-
-  // 🔴 On ne remet plus le slider à 0 quand la souris sort
-  const onLeave  = () => {};
-  const onResize = () => {
-    // on recalcule juste le max mais on ne force pas à 0
-    const rect = container.getBoundingClientRect();
-    const relX = 0.5; // place globalement au milieu si tu redimensionnes
-    const target = getMaxX() * relX;
-    toX(target);
-  };
-
-  container.addEventListener('mousemove', onMove, { passive: true });
-  container.addEventListener('mouseleave', onLeave, { passive: true });
-  window.addEventListener('resize', onResize);
-
-  return {
-    enable(){ enabled = true; },
-    disable(){ enabled = false; },
-    isEnabled(){ return enabled; }
-  };
-}
-
-
-
-  // === FX Layer ==========================================================
-  let fxLayer;
-  let currentTL;
-  let currentSprites = [];
-
-  function ensureFxLayer(parentSection){
-    if (!fxLayer){
-      if (getComputedStyle(parentSection).position === 'static') {
-        parentSection.style.position = 'relative';
-      }
-      fxLayer = document.createElement('div');
-      fxLayer.className = 'fx-layer';
-      Object.assign(fxLayer.style, {
-        position: 'absolute',
-        inset: '0',
-        pointerEvents: 'none',
-        overflow: 'visible',
-        zIndex: '4',
-        outline: 'none',
-        background: 'transparent'
-      });
-      parentSection.appendChild(fxLayer);
-      forcePaint(fxLayer);
+  function enableMousePan(container, track) {
+    if (isCoarsePointer || !container || !track || typeof gsap === 'undefined') {
+      return { enable(){}, disable(){}, isEnabled(){ return false; } };
     }
-  }
 
-  function preload(srcs = []){
-    srcs.forEach(s => { const i = new Image(); i.src = s; });
-  }
+    let enabled = true;
 
-  // Effet "rougail" – 1 saucisse centrée
-  function playFxRougail(images){
-    if (typeof gsap === 'undefined' || !fxLayer || !homeSlider) return gsap.timeline();
-    const src = images[0];
-    if (!src) return gsap.timeline();
+    const currentTransform = getComputedStyle(track).transform;
+    let startX = 0;
+    if (currentTransform && currentTransform !== 'none') {
+      const matrix = new DOMMatrix(currentTransform);
+      startX = matrix.m41 || 0;
+    }
 
-    const tl = gsap.timeline({ defaults:{ ease: "expo.out" } });
+    const toX = gsap.quickTo(track, "x", { duration: 0.6, ease: "power3.out" });
+    gsap.set(track, { x: startX });
 
-    const layerRect  = fxLayer.getBoundingClientRect();
-    const sliderRect = homeSlider.getBoundingClientRect();
+    function getMaxX() {
+      const max = Math.max(0, track.scrollWidth - container.clientWidth);
+      return -max;
+    }
 
-    const startBelowY  = sliderRect.bottom - layerRect.top + 260;
-    const endAboveY    = sliderRect.top    - layerRect.top - 340;
-    const baseX        = sliderRect.left   - layerRect.left + sliderRect.width * 0.55;
+    function onMove(e) {
+      if (!enabled) return;
+      const rect = container.getBoundingClientRect();
+      const relX = (e.clientX - rect.left) / rect.width;
+      const target = getMaxX() * relX;
+      toX(target);
+    }
 
-    const cfg = {
-      w: 85,
-      dx: 0,
-      dy0: 0,
-      dy1: 0,
-      r0: -6,
-      s0: 0.95,
-      s1: 1.0,
-      dur: 2.0,
-      del: 0.5
+    container.addEventListener('mousemove', onMove, { passive: true });
+
+    return {
+      enable(){ enabled = true; },
+      disable(){ enabled = false; },
+      isEnabled(){ return enabled; }
     };
-
-    function addSprite(src, {w, dx, dy0, dy1, r0, s0, s1, dur, del}){
-      const el = document.createElement('img');
-      el.className = 'fx-sprite';
-      el.src = src;
-      el.style.width = w + 'vw';
-      fxLayer.appendChild(el);
-      currentSprites.push(el);
-
-      gsap.set(el, {
-        x: baseX + dx,
-        y: startBelowY + dy0,
-        opacity: 0,
-        rotation: r0,
-        scale: s0
-      });
-
-      tl.to(el, {
-        x: baseX + dx,
-        y: endAboveY + dy1,
-        opacity: 1,
-        rotation: 0,
-        scale: s1,
-        duration: dur
-      }, del);
-    }
-
-    addSprite(src, cfg);
-    return tl;
   }
 
-  // Effet "cards" – 2 cartes
-  function playFxCards(images, count){
-    if (typeof gsap === "undefined" || !fxLayer || !homeSlider) {
-      return gsap.timeline();
-    }
-
-    const tl = gsap.timeline({ defaults:{ ease: "power3.out" } });
-
-    const layerRect  = fxLayer.getBoundingClientRect();
-    const sliderRect = homeSlider.getBoundingClientRect();
-
-    const cx = sliderRect.left - layerRect.left + sliderRect.width / 2;
-
-    const cardConfigs = [
-      {
-        offsetX: 140,
-        startOffset: 80,
-        endOffset: -180,
-        duration: 2.2,
-        scaleStart: 0.85,
-        scaleEnd: 1
-      },
-      {
-        offsetX: 420,
-        startOffset: 110,
-        endOffset: -410,
-        duration: 2.75,
-        scaleStart: 0.5,
-        scaleEnd: 0.4
-      }
-    ];
-
-    const maxCards = 2;
-    const cards = Math.min(
-      maxCards,
-      count || maxCards,
-      (images && images.length) || 0
-    );
-
-    if (!cards) return tl;
-
-    for (let i = 0; i < cards; i++){
-      const cfg = cardConfigs[i] || cardConfigs[cardConfigs.length - 1];
-      const src = images[i % images.length];
-
-      const img = document.createElement('img');
-      img.className = 'fx-sprite';
-      img.src = src;
-      fxLayer.appendChild(img);
-      currentSprites.push(img);
-
-      const startY = sliderRect.bottom - layerRect.top + cfg.startOffset;
-      const endY   = sliderRect.top   - layerRect.top + cfg.endOffset;
-
-      gsap.set(img, {
-        x: cx + cfg.offsetX,
-        y: startY,
-        opacity: 0,
-        scale: cfg.scaleStart ?? 0.85,
-        rotation: 0
-      });
-
-      tl.to(img, {
-        y: endY,
-        opacity: 1,
-        scale: cfg.scaleEnd ?? 1,
-        duration: cfg.duration
-      }, i * 0.12);
-    }
-
-    return tl;
-  }
-
-  function buildFx(slide){
-    const projectId = (slide.dataset.project || '').toLowerCase();
-    if (projectId === 'ardko') {
-      // pas de sprites pour Ardko, seulement le grain
-      return null;
-    }
-
-    const type  = (slide.dataset.fx || '').toLowerCase();
-    const imgs  = (slide.dataset.fxImages || '').split('|').map(s => s.trim()).filter(Boolean);
-    const count = Number(slide.dataset.fxCount || (type === 'rougail' ? 9 : 6));
-    if (!type || !imgs.length) return null;
-
-    preload(imgs);
-
-    switch (type){
-      case 'rougail': return () => playFxRougail(imgs);
-      case 'cards' :  return () => playFxCards(imgs, count);
-      default:        return null;
-    }
-  }
-
-  let _fxSwitchToken = 0;
-
-  function clearEffect(force = false, leaveMs = 600) {
-    return new Promise((resolve) => {
-      const sprites = currentSprites.slice();
-      currentSprites = [];
-
-      if (currentTL) {
-        currentTL.kill();
-        currentTL = null;
-      }
-
-      if (force || !sprites.length || leaveMs <= 0) {
-        sprites.forEach(el => el.remove());
-        resolve();
-        return;
-      }
-
-      if (typeof gsap === 'undefined') {
-        sprites.forEach(el => el.remove());
-        resolve();
-        return;
-      }
-
-      gsap.to(sprites, {
-        y: '+=40',
-        opacity: 0,
-        duration: leaveMs / 1000,
-        stagger: 0.03,
-        ease: 'power2.inOut',
-        onComplete() {
-          sprites.forEach(el => el.remove());
-          resolve();
-        }
-      });
-    });
-  }
-
-  function playEffectForSlide(slide, parentSection){
-  // 🔴 Désactivation complète des FX sur mobile / tablette
-  if (isTouchOrSmall) return;
-
-  ensureFxLayer(parentSection);
-  const switchToken = ++_fxSwitchToken;
-
-  clearEffect(false, 700).then(() => {
-    if (switchToken !== _fxSwitchToken) return;
-
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        const layerRect  = fxLayer.getBoundingClientRect();
-        const sliderRect = homeSlider.getBoundingClientRect();
-        if (!layerRect.width || !sliderRect.width) return;
-
-        const make = buildFx(slide);
-        if (!make) return;
-
-        currentTL = make();
-      });
-    });
-  });
-}
-
-
-  // ===== LIGHTBOX PROJET (image + vidéo) =====
-  function showLightbox() {
-    if (!lightbox || !lightboxContent) return;
-    lightbox.hidden = false;
-    lightbox.classList.add('is-open');
-
-    if (typeof gsap !== 'undefined') {
-      gsap.fromTo(lightboxContent,
-        { scale: 0.95, opacity: 0 },
-        { scale: 1, opacity: 1, duration: 0.25, ease: 'power3.out' }
-      );
-    }
-  }
-
-  function closeLightbox() {
-    if (!lightbox || !lightboxContent) return;
-
-    const vid = lightboxContent.querySelector('video');
-    if (vid) vid.pause();
-
-    lightbox.classList.remove('is-open');
-    lightbox.hidden = true;
-    lightboxContent.innerHTML = '';
-  }
-
-  function openLightboxImage(src, alt = '') {
-    if (!lightbox || !lightboxContent) return;
-
-    lightboxContent.innerHTML = '';
-    const img = document.createElement('img');
-    img.className = 'lightbox__media';
-    img.src = src;
-    img.alt = alt || '';
-    lightboxContent.appendChild(img);
-
-    showLightbox();
-  }
-
-  function openLightboxVideo(src) {
-    if (!lightbox || !lightboxContent) return;
-
-    lightboxContent.innerHTML = '';
-    const video = document.createElement('video');
-    video.className = 'lightbox__media';
-    video.autoplay = true;
-    video.muted = true;
-    video.loop = true;
-    video.playsInline = true;
-
-    const source = document.createElement('source');
-    source.src = src;
-    source.type = 'video/mp4';
-
-    video.appendChild(source);
-    lightboxContent.appendChild(video);
-
-    showLightbox();
-  }
-
-  // ===== Thème + FX au hover du slider home =====
-    function enableHoverTheme(slides, targetContainerEl, targetSectionEl = homeView) {
-    // Sur mobile / tablette : pas de thème au hover, pas de FX
-    if (isCoarsePointer) return;
-
-    if (!slides.length || !targetContainerEl || !homeSlider) return;
-
-    const cs = getComputedStyle(targetContainerEl);
-    const baseBG = cs.getPropertyValue('--bg').trim() || cs.backgroundColor;
-    const baseFG = cs.getPropertyValue('--fg').trim() || cs.color;
-
-    document.documentElement.style.setProperty('--cursor-color', baseFG);
-    // ... (le reste de ta fonction inchangé)
-
-
-    const setTheme = (bg, fg) => {
-      targetContainerEl.style.setProperty('--bg', bg);
-      targetContainerEl.style.setProperty('--fg', fg);
-      if (targetSectionEl) {
-        targetSectionEl.style.backgroundColor = bg;
-        targetSectionEl.style.setProperty('--fg', fg);
-      }
-      document.documentElement.style.setProperty('--cursor-color', fg);
-    };
-
-    const isArdkoSlide = (slide) =>
-      (slide.dataset.project || '').toLowerCase() === 'ardko';
-
-    const isHoloraSlide = (slide) =>
-      (slide.dataset.project || '').toLowerCase() === 'holora' ||
-      (slide.dataset.title   || '').toLowerCase() === 'holora';
-
-    function applyFromSlide(slide) {
-      let bg = slide.dataset.color || baseBG;
-      let fg = slide.dataset.fg || autoContrast(bg);
-
-      // Holora : noir / blanc
-      if (isHoloraSlide(slide)) {
-        bg = '#000000';
-        fg = '#ffffff';
-      }
-
-      setTheme(bg, fg);
-
-      // Grain Ardko
-      if (isArdkoSlide(slide)) {
-        document.body.classList.add('is-grain-ardko');
-      } else if (!document.body.classList.contains('is-project-ardko')) {
-        document.body.classList.remove('is-grain-ardko');
-      }
-
-      // Glitch Holora
-      if (isHoloraSlide(slide)) {
-        document.body.classList.add('glitch-active');
-      } else if (!document.body.classList.contains('is-project-holora')) {
-        document.body.classList.remove('glitch-active');
-      }
-
-      // FX
-      playEffectForSlide(slide, targetSectionEl || homeView);
-    }
-
-    let currentSlide = null;
-
-    homeSlider.addEventListener('pointerover', (e) => {
-      const s = e.target.closest('.slide');
-      if (!s || !homeSlider.contains(s)) return;
-      if (currentSlide === s) return;
-      currentSlide = s;
-      applyFromSlide(s);
-    });
-
-    homeSlider.addEventListener('pointerleave', () => {
-      currentSlide = null;
-      setTheme(baseBG, baseFG);
-      clearEffect(false, 900);
-
-      if (!document.body.classList.contains('is-project-ardko')) {
-        document.body.classList.remove('is-grain-ardko');
-      }
-      if (!document.body.classList.contains('is-project-holora')) {
-        document.body.classList.remove('glitch-active');
-      }
-    });
-
-    slides.forEach(s => {
-      s.addEventListener('focusin', () => {
-        currentSlide = s;
-        applyFromSlide(s);
-      });
-      s.addEventListener('focusout', () => {
-        currentSlide = null;
-        setTheme(baseBG, baseFG);
-        clearEffect();
-
-        if (!document.body.classList.contains('is-project-ardko')) {
-          document.body.classList.remove('is-grain-ardko');
-        }
-        if (!document.body.classList.contains('is-project-holora')) {
-          document.body.classList.remove('glitch-active');
-        }
-      });
-    });
-  }
-
-  // ===== Construit les slides projet =====
   function buildProjectSlides(mediaList, altBase = 'project media') {
-    return mediaList.map(src => {
-      const trimmed = src.trim().toLowerCase();
+    return (mediaList || []).map(src => {
+      const trimmed = (src || '').trim();
+      const low = trimmed.toLowerCase();
+      if (!trimmed) return '';
 
       const isVideo =
-        trimmed.endsWith('.mp4') ||
-        trimmed.endsWith('.webm') ||
-        trimmed.endsWith('.mov') ||
-        trimmed.includes('video');
+        low.endsWith('.mp4') ||
+        low.endsWith('.webm') ||
+        low.endsWith('.mov') ||
+        low.includes('video');
 
       if (isVideo) {
         return `
           <a class="slide" href="#" tabindex="-1">
             <video class="project-video" autoplay muted loop playsinline>
-              <source src="${src.trim()}" type="video/mp4">
+              <source src="${trimmed}" type="video/mp4">
             </video>
           </a>
         `;
@@ -572,398 +188,587 @@ function enableMousePan(container, track) {
 
       return `
         <a class="slide" href="#" tabindex="-1">
-          <img src="${src.trim()}" alt="${altBase}">
+          <img src="${trimmed}" alt="${altBase}">
         </a>
       `;
     }).join('');
   }
 
-  // ===== CTA "View site" =====
-  function ensureProjectCTA(anchorEl) {
-    if (!anchorEl) return null;
-    let ctaWrap = projectView.querySelector('.project_cta');
-    if (!ctaWrap) {
-      ctaWrap = document.createElement('div');
-      ctaWrap.className = 'project_cta';
+  // Loop infini mobile + évite nav clones
+  function initInfiniteSlider(container, track) {
+    if (!container || !track) return;
+    if (track.dataset.loopInit === '1') return;
+
+    const slides = Array.from(track.children);
+    if (slides.length < 2) return;
+
+    const originalWidth = track.scrollWidth;
+
+    slides.forEach((slide) => {
+      const clone = slide.cloneNode(true);
+      clone.setAttribute('data-clone', '1');
+      if (clone.tagName.toLowerCase() === 'a') clone.setAttribute('href', '#');
+      track.appendChild(clone);
+    });
+
+    track.dataset.loopInit = '1';
+
+    let ticking = false;
+    function onScroll() {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        const max = originalWidth;
+        const left = container.scrollLeft;
+
+        if (left >= max) container.scrollLeft = left - max;
+        else if (left <= 0) container.scrollLeft = left + max;
+
+        ticking = false;
+      });
     }
-    if (ctaWrap.parentNode !== anchorEl.parentNode || ctaWrap.nextElementSibling !== anchorEl) {
-      anchorEl.parentNode.insertBefore(ctaWrap, anchorEl);
-    }
-    let btn = ctaWrap.querySelector('.view_site');
-    if (!btn) {
-      btn = document.createElement('a');
-      btn.className = 'btn view_site';
-      btn.textContent = 'View site';
-      btn.target = '_blank';
-      btn.rel = 'noopener';
-      ctaWrap.appendChild(btn);
-    }
-    return btn;
+
+    container.addEventListener('scroll', onScroll, { passive: true });
   }
 
-  // ===== Récup données d’une slide =====
-  function parseSlideData(slideEl) {
-    const title  = slideEl.dataset.title   || 'Project';
-    const color  = slideEl.dataset.color   || '';
-    const fg     = slideEl.dataset.fg      || '';
-    const href   = slideEl.getAttribute('href') || '/project';
-    const url    = slideEl.dataset.url || '';
-    const images = (slideEl.dataset.images || '').split('|').filter(Boolean);
-    const projectId = slideEl.dataset.project || '';
+  function initPortfolio(root){
+    const appRail     = root.querySelector('.app-rail');
+    const homeView    = root.querySelector('.view--home');
+    const projectView = root.querySelector('.view--project');
+    if (!appRail || !homeView || !projectView) return;
 
-    const rawDesc = slideEl.dataset.desc || '';
-    const parts   = rawDesc.includes('||') ? rawDesc.split('||') : [rawDesc, rawDesc];
-    const p1 = (parts[0] || '').trim();
-    const p2 = (parts[1] || parts[0] || '').trim();
+    const heroHome    = homeView.querySelector('.container');
+    const heroProject = projectView.querySelector('.container');
+    const backBtn     = projectView.querySelector('.back_to_home');
 
-    return { title, color, fg, href, url, images, p1, p2, projectId };
-  }
+    const homeSlider  = root.querySelector('.sliders_works');
+    const homeTrack   = root.querySelector('.slides_track');
+    const homeSlides  = root.querySelectorAll('.slides_track .slide');
 
-  // ===== Remplit la vue projet =====
-  function fillProjectView(data) {
-    if (projectTitle) projectTitle.textContent = data.title || '—';
+    const projectTrack      = projectView.querySelector('.project_track');
+    const projectTitle      = projectView.querySelector('.project_title');
+    const projectDesc       = projectView.querySelector('.project_desc');
+    const projectSliderWrap = projectView.querySelector('.sliders_project');
 
-    if (projectDesc) {
-      const p1 = data.p1 ? `<p class="project_p1">${data.p1}</p>` : '';
-      const p2 = data.p2 ? `<p class="project_p2">${data.p2}</p>` : '';
-      projectDesc.innerHTML = p1 + p2;
-    }
+    let projectPanInstance = null;
 
-    if (heroProject) {
-      const bg = data.color || getComputedStyle(heroProject).getPropertyValue('--bg').trim();
-      const fg = (data.fg && data.fg.trim()) || autoContrast(bg);
+    const lightbox        = document.querySelector('.lightbox');
+    const lightboxContent = lightbox?.querySelector('.lightbox__content');
 
-      heroProject.style.setProperty('--bg', bg);
-      heroProject.style.setProperty('--fg', fg);
-      projectView.style.setProperty('--fg', fg);
-      projectView.style.backgroundColor = bg;
+    const homeBaseBG    = getComputedStyle(homeView).backgroundColor;
+    const projectBaseBG = getComputedStyle(projectView).backgroundColor;
 
-      document.documentElement.style.setProperty('--cursor-color', fg);
-    }
+    const $ = (s, el = root) => el.querySelector(s);
 
-    if (projectTrack) {
-      projectTrack.innerHTML = buildProjectSlides(data.images, `${data.title} — image`);
-      if (typeof gsap !== 'undefined') {
-        gsap.set(projectTrack.querySelectorAll('.slide'), { opacity: 0, y: 12 });
-        gsap.to(projectTrack.querySelectorAll('.slide'), {
-          opacity: 1,
-          y: 0,
-          duration: 0.5,
-          stagger: 0.06,
-          delay: 0.05,
-          ease: "power2.out"
+    // -------- FX (Rougail / Cards) --------
+    let fxLayer;
+    let currentTL = null;
+    let currentSprites = [];
+    let _fxSwitchToken = 0;
+
+    function ensureFxLayer(parentSection){
+      if (isTouchOrSmall) return;
+      if (!fxLayer){
+        if (getComputedStyle(parentSection).position === 'static') parentSection.style.position = 'relative';
+        fxLayer = document.createElement('div');
+        fxLayer.className = 'fx-layer';
+        Object.assign(fxLayer.style, {
+          position: 'absolute',
+          inset: '0',
+          pointerEvents: 'none',
+          overflow: 'hidden',
+          zIndex: '4',
+          background: 'transparent'
         });
+        parentSection.appendChild(fxLayer);
+        forcePaint(fxLayer);
       }
     }
 
-    const btn = ensureProjectCTA(projectSliderWrap);
-    if (btn) btn.href = (data.url && data.url !== '') ? data.url : '#';
-  }
-
-  // ===== Animation vers la vue projet =====
-  async function goToProjectFromSlide(slideEl) {
-    const data = parseSlideData(slideEl);
-    const isArdko   = (data.projectId || '').toLowerCase() === 'ardko';
-    const isHolora  =
-      (data.projectId || '').toLowerCase() === 'holora' ||
-      (data.title || '').toLowerCase() === 'holora';
-
-    fillProjectView(data);
-
-    const projectBG = data.color || getComputedStyle(projectView).backgroundColor;
-    const projectFG = data.fg || autoContrast(projectBG);
-    document.documentElement.style.setProperty('--cursor-color', projectFG);
-
-    // Ardko
-    if (isArdko) {
-      document.body.classList.add('is-grain-ardko', 'is-project-ardko');
-    } else {
-      document.body.classList.remove('is-project-ardko', 'is-grain-ardko');
+    function preload(srcs = []){
+      srcs.forEach(s => { const i = new Image(); i.src = s; });
     }
 
-    // Holora
-    if (isHolora) {
-      document.body.classList.add('is-project-holora', 'glitch-active');
-    } else {
-      document.body.classList.remove('is-project-holora');
-      // glitch-active peut rester si hover
-    }
+    function clearEffect(force = false, leaveMs = 600) {
+      return new Promise((resolve) => {
+        const sprites = currentSprites.slice();
+        currentSprites = [];
 
-    clearEffect(true);
+        if (currentTL) { currentTL.kill(); currentTL = null; }
 
-    projectView.hidden = false;
+        if (force || !sprites.length || leaveMs <= 0 || typeof gsap === 'undefined') {
+          sprites.forEach(el => el.remove());
+          resolve();
+          return;
+        }
 
-    if (typeof gsap !== 'undefined') {
-      await gsap.to(appRail, {
-        yPercent: -100,
-        duration: 1.0,
-        ease: "power3.inOut"
+        gsap.to(sprites, {
+          y: '+=40',
+          opacity: 0,
+          duration: leaveMs / 1000,
+          stagger: 0.03,
+          ease: 'power2.inOut',
+          onComplete() {
+            sprites.forEach(el => el.remove());
+            resolve();
+          }
+        });
       });
-    } else {
-      appRail.style.transform = 'translateY(-100%)';
     }
 
-    window.dispatchEvent(new Event("view-project-open"));
+    function playFxRougail(images){
+      if (typeof gsap === 'undefined' || !fxLayer || !homeSlider) return gsap.timeline();
+      if (!images?.length) return gsap.timeline();
 
+      const tl = gsap.timeline({ defaults:{ ease: "expo.out" } });
+      const layerRect  = fxLayer.getBoundingClientRect();
+      const sliderRect = homeSlider.getBoundingClientRect();
 
-    document.documentElement.style.setProperty('--cursor-color', projectFG);
+      const startBelowY  = sliderRect.bottom - layerRect.top + 260;
+      const endAboveY    = sliderRect.top    - layerRect.top - 340;
+      const baseX        = sliderRect.left   - layerRect.left + sliderRect.width * 0.55;
 
-    if (isHolora) {
-      document.body.classList.add('is-project-holora', 'glitch-active');
+      const el = document.createElement('img');
+      el.className = 'fx-sprite';
+      el.src = images[0];
+      el.style.width = '85vw';
+      fxLayer.appendChild(el);
+      currentSprites.push(el);
+
+      gsap.set(el, { x: baseX, y: startBelowY, opacity: 0, rotation: -6, scale: 0.95 });
+      tl.to(el, { x: baseX, y: endAboveY, opacity: 1, rotation: 0, scale: 1, duration: 2.0 }, 0.5);
+
+      return tl;
     }
 
-        if (data.href && history && history.pushState) {
-      const slug = data.href.replace(/^\//, '');       // "project-1"
-      const url  = basePath + slug;                   // "/portfolio-2025/project-1"
-      history.pushState({ view: 'project', href: slug }, '', url);
+    function playFxCards(images, count){
+      if (typeof gsap === 'undefined' || !fxLayer || !homeSlider) return gsap.timeline();
+      if (!images?.length) return gsap.timeline();
+
+      const tl = gsap.timeline({ defaults:{ ease: "power3.out" } });
+      const layerRect  = fxLayer.getBoundingClientRect();
+      const sliderRect = homeSlider.getBoundingClientRect();
+      const cx = sliderRect.left - layerRect.left + sliderRect.width / 2;
+
+      const cardConfigs = [
+        { offsetX: 140, startOffset: 80,  endOffset: -180, duration: 2.2,  scaleStart: 0.85, scaleEnd: 1 },
+        { offsetX: 420, startOffset: 110, endOffset: -410, duration: 2.75, scaleStart: 0.5,  scaleEnd: 0.4 }
+      ];
+
+      const maxCards = 2;
+      const cards = Math.min(maxCards, count || maxCards, images.length);
+
+      for (let i = 0; i < cards; i++){
+        const cfg = cardConfigs[i] || cardConfigs[0];
+        const src = images[i % images.length];
+
+        const img = document.createElement('img');
+        img.className = 'fx-sprite';
+        img.src = src;
+        fxLayer.appendChild(img);
+        currentSprites.push(img);
+
+        const startY = sliderRect.bottom - layerRect.top + cfg.startOffset;
+        const endY   = sliderRect.top   - layerRect.top + cfg.endOffset;
+
+        gsap.set(img, { x: cx + cfg.offsetX, y: startY, opacity: 0, scale: cfg.scaleStart, rotation: 0 });
+        tl.to(img, { y: endY, opacity: 1, scale: cfg.scaleEnd, duration: cfg.duration }, i * 0.12);
+      }
+
+      return tl;
     }
 
+    function buildFx(slide){
+      const projectId = (slide.dataset.project || '').toLowerCase();
+      if (projectId === 'ardko') return null;
 
-    if (!projectPanInstance) {
-  projectPanInstance = enableMousePan($('.sliders_project', projectView), projectTrack);
-}
+      const type  = (slide.dataset.fx || '').toLowerCase();
+      const imgs  = (slide.dataset.fxImages || '').split('|').map(s => s.trim()).filter(Boolean);
+      const count = Number(slide.dataset.fxCount || (type === 'rougail' ? 8 : 6));
+      if (!type || !imgs.length) return null;
 
+      preload(imgs);
+      if (type === 'rougail') return () => playFxRougail(imgs);
+      if (type === 'cards')  return () => playFxCards(imgs, count);
+      return null;
+    }
 
-    const btn = projectView.querySelector('.btn.view_site');
-    if (btn) {
-      if (window._initCTAMarquee && !btn._marqueeInit) {
-        window._initCTAMarquee(btn);
-      } else if (btn._marqueeRecalc) {
-        btn._marqueeRecalc();
+    function playEffectForSlide(slide, parentSection){
+      if (isTouchOrSmall) return;
+      ensureFxLayer(parentSection);
+      const switchToken = ++_fxSwitchToken;
+
+      clearEffect(false, 700).then(() => {
+        if (switchToken !== _fxSwitchToken) return;
+
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            if (!fxLayer) return;
+            const make = buildFx(slide);
+            if (!make) return;
+            currentTL = make();
+          });
+        });
+      });
+    }
+
+    // -------- Lightbox --------
+    function showLightbox() {
+      if (!lightbox || !lightboxContent) return;
+      lightbox.hidden = false;
+      lightbox.classList.add('is-open');
+      if (typeof gsap !== 'undefined') {
+        gsap.fromTo(lightboxContent, { scale: 0.95, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.25, ease: 'power3.out' });
       }
     }
-  }
 
-  // ===== Retour home =====
-  async function backToHome() {
-    if (typeof gsap !== 'undefined') {
-      await gsap.to(appRail, {
-        yPercent: 0,
-        duration: 1.0,
-        ease: "power3.inOut"
+    function closeLightbox() {
+      if (!lightbox || !lightboxContent) return;
+      const vid = lightboxContent.querySelector('video');
+      if (vid) vid.pause();
+      lightbox.classList.remove('is-open');
+      lightbox.hidden = true;
+      lightboxContent.innerHTML = '';
+    }
+
+    function openLightboxImage(src, alt = '') {
+      if (!lightbox || !lightboxContent) return;
+      lightboxContent.innerHTML = '';
+      const img = document.createElement('img');
+      img.className = 'lightbox__media';
+      img.src = src;
+      img.alt = alt || '';
+      lightboxContent.appendChild(img);
+      showLightbox();
+    }
+
+    function openLightboxVideo(src) {
+      if (!lightbox || !lightboxContent) return;
+      lightboxContent.innerHTML = '';
+      const video = document.createElement('video');
+      video.className = 'lightbox__media';
+      video.autoplay = true;
+      video.muted = true;
+      video.loop = true;
+      video.playsInline = true;
+
+      const source = document.createElement('source');
+      source.src = src;
+      source.type = 'video/mp4';
+
+      video.appendChild(source);
+      lightboxContent.appendChild(video);
+      showLightbox();
+    }
+
+    // -------- Hover theme + FX (desktop) --------
+    function enableHoverTheme(slides, targetContainerEl, targetSectionEl = homeView) {
+      if (!canHover) return;
+      if (!slides.length || !targetContainerEl || !homeSlider) return;
+
+      const cs = getComputedStyle(targetContainerEl);
+      const baseBG = cs.getPropertyValue('--bg').trim() || cs.backgroundColor;
+      const baseFG = cs.getPropertyValue('--fg').trim() || cs.color;
+
+      const setTheme = (bg, fg) => {
+        targetContainerEl.style.setProperty('--bg', bg);
+        targetContainerEl.style.setProperty('--fg', fg);
+        if (targetSectionEl) {
+          targetSectionEl.style.backgroundColor = bg;
+          targetSectionEl.style.setProperty('--fg', fg);
+        }
+        document.documentElement.style.setProperty('--cursor-color', fg);
+      };
+
+      const isArdkoSlide = (slide) => (slide.dataset.project || '').toLowerCase() === 'ardko';
+      const isHoloraSlide = (slide) =>
+        (slide.dataset.project || '').toLowerCase() === 'holora' ||
+        (slide.dataset.title || '').toLowerCase() === 'holora';
+
+      function applyFromSlide(slide) {
+        if (slide.dataset.clone === '1') return;
+
+        let bg = slide.dataset.color || baseBG;
+        let fg = slide.dataset.fg || autoContrast(bg);
+
+        // FX (rougail/cards)
+        playEffectForSlide(slide, targetSectionEl || homeView);
+
+        // Holora force noir/blanc
+        if (isHoloraSlide(slide)) { bg = '#000000'; fg = '#ffffff'; }
+
+        setTheme(bg, fg);
+
+        if (isArdkoSlide(slide)) document.body.classList.add('is-grain-ardko');
+        else if (!document.body.classList.contains('is-project-ardko')) document.body.classList.remove('is-grain-ardko');
+
+        if (isHoloraSlide(slide)) document.body.classList.add('glitch-active');
+        else if (!document.body.classList.contains('is-project-holora')) document.body.classList.remove('glitch-active');
+      }
+
+      let currentSlide = null;
+
+      homeSlider.addEventListener('pointerover', (e) => {
+        const s = e.target.closest('.slide');
+        if (!s || !homeSlider.contains(s)) return;
+        if (currentSlide === s) return;
+        currentSlide = s;
+        applyFromSlide(s);
       });
-    } else {
-      appRail.style.transform = 'translateY(0%)';
+
+      homeSlider.addEventListener('pointerleave', () => {
+        currentSlide = null;
+        setTheme(baseBG, baseFG);
+
+        if (!document.body.classList.contains('is-project-ardko')) document.body.classList.remove('is-grain-ardko');
+        if (!document.body.classList.contains('is-project-holora')) document.body.classList.remove('glitch-active');
+
+        clearEffect(false, 900);
+      });
     }
 
-    projectView.hidden = true;
-        if (history && history.pushState) {
-      history.pushState({ view: 'home' }, '', basePath);
+    // -------- Project view fill --------
+    function parseSlideData(slideEl) {
+      const title  = slideEl.dataset.title || 'Project';
+      const color  = slideEl.dataset.color || '';
+      const fg     = slideEl.dataset.fg || '';
+      const href   = slideEl.getAttribute('href') || '';
+      const url    = slideEl.dataset.url || '';
+      const images = (slideEl.dataset.images || '').split('|').filter(Boolean);
+
+      const rawDesc = slideEl.dataset.desc || '';
+      const parts   = rawDesc.includes('||') ? rawDesc.split('||') : [rawDesc, rawDesc];
+      const p1 = (parts[0] || '').trim();
+      const p2 = (parts[1] || parts[0] || '').trim();
+
+      return { title, color, fg, href, url, images, p1, p2 };
     }
 
+    function fillProjectView(data) {
+      if (projectTitle) projectTitle.textContent = data.title || '—';
 
-    document.body.classList.remove(
-      'is-project-ardko',
-      'is-grain-ardko',
-      'is-project-holora',
-      'glitch-active'
-    );
+      if (projectDesc) {
+        const p1 = data.p1 ? `<p class="project_p1">${data.p1}</p>` : '';
+        const p2 = data.p2 ? `<p class="project_p2">${data.p2}</p>` : '';
+        projectDesc.innerHTML = p1 + p2;
+      }
 
-    if (heroHome) {
-      const cs = getComputedStyle(heroHome);
-      const homeBG = cs.getPropertyValue('--bg').trim() || cs.backgroundColor;
-      const homeFG = cs.getPropertyValue('--fg').trim() || cs.color || autoContrast(homeBG);
-      document.documentElement.style.setProperty('--cursor-color', homeFG);
+      if (heroProject) {
+        const bg = data.color || getComputedStyle(heroProject).getPropertyValue('--bg').trim();
+        const fg = (data.fg && data.fg.trim()) || autoContrast(bg);
+
+        heroProject.style.setProperty('--bg', bg);
+        heroProject.style.setProperty('--fg', fg);
+        projectView.style.setProperty('--fg', fg);
+        projectView.style.backgroundColor = bg;
+
+        document.documentElement.style.setProperty('--cursor-color', fg);
+      }
+
+      if (projectTrack) {
+        projectTrack.innerHTML = buildProjectSlides(data.images, `${data.title} — image`);
+        if (typeof gsap !== 'undefined') {
+          gsap.set(projectTrack.querySelectorAll('.slide'), { opacity: 0, y: 12 });
+          gsap.to(projectTrack.querySelectorAll('.slide'), {
+            opacity: 1, y: 0, duration: 0.5, stagger: 0.06, delay: 0.05, ease: "power2.out"
+          });
+        }
+      }
+
+      const btn = projectView.querySelector('.btn.view_site');
+      if (btn) btn.href = (data.url && data.url !== '') ? data.url : '#';
     }
 
-    window.dispatchEvent(new Event("view-home-open"));
+    // -------- Navigation between views --------
+    let _isOpeningFromHash = false;
 
-  }
+    async function goToProjectFromSlide(slideEl, { updateHash = true } = {}) {
+      const data = parseSlideData(slideEl);
+      fillProjectView(data);
 
-  // ===== Init comportements =====
-  homeView.style.backgroundColor    = homeBaseBG;
-  projectView.style.backgroundColor = projectBaseBG;
+      projectView.hidden = false;
 
-  enableMousePan(homeSlider, homeTrack);
-  // Thème + FX uniquement sur desktop
-if (!isTouchDevice) {
-  enableHoverTheme(homeSlides, heroHome, homeView);
-}
+      // Force le navigateur à recalculer la taille avant de lancer l'anim
+      void appRail.offsetWidth; 
 
+      if (typeof gsap !== 'undefined') {
+        // CORRECTION ULTIME : On monte de la hauteur exacte de l'écran en pixels
+        await gsap.to(appRail, { y: -window.innerHeight, duration: 1.0, ease: "power3.inOut" });
+      } else {
+        appRail.style.transform = `translateY(${-window.innerHeight}px)`;
+      }
+      
 
-    // Clic sur les projets (home) – event delegation
-  if (homeSlider) {
-    homeSlider.addEventListener('click', (e) => {
-      // clic spécial (cmd+click, ctrl+click, bouton milieu…) => on laisse le navigateur gérer
+      // hash = mode:slug
+      if (updateHash && data.href) {
+        const mode = (document.body.dataset.mode === 'video') ? 'video' : 'web';
+        const slug = String(data.href).replace(/^\//,'').replace(/^#/,'');
+        _isOpeningFromHash = true;
+        setHash(mode, slug, true);
+        _isOpeningFromHash = false;
+      }
+
+      if (!projectPanInstance) {
+        projectPanInstance = enableMousePan($('.sliders_project', projectView), projectTrack);
+      }
+
+      if (isTouchOrSmall) initInfiniteSlider(projectSliderWrap, projectTrack);
+    }
+
+    async function backToHome({ updateHash = true } = {}) {
+      if (typeof gsap !== 'undefined') {
+        // Retour à 0
+        await gsap.to(appRail, { y: 0, duration: 1.0, ease: "power3.inOut" });
+      } else {
+        appRail.style.transform = 'translateY(0px)';
+      }
+
+      projectView.hidden = true;
+
+      if (updateHash) {
+        const mode = (document.body.dataset.mode === 'video') ? 'video' : 'web';
+        setHash(mode, '', true);
+      }
+
+      // reset theme basics
+      homeView.style.backgroundColor = homeBaseBG;
+      projectView.style.backgroundColor = projectBaseBG;
+    }
+
+    // -------- Click handlers --------
+    homeView.style.backgroundColor    = homeBaseBG;
+    projectView.style.backgroundColor = projectBaseBG;
+
+    if (homeSlider && homeTrack) enableMousePan(homeSlider, homeTrack);
+    if (!isTouchDevice) enableHoverTheme(homeSlides, heroHome, homeView);
+
+    homeSlider?.addEventListener('click', (e) => {
       if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
 
       const slide = e.target.closest('.slide');
       if (!slide || !homeSlider.contains(slide)) return;
 
-      e.preventDefault();
-      goToProjectFromSlide(slide);
-    });
-  }
-
-
-  backBtn?.addEventListener('click', backToHome);
-
-  if (projectTrack && lightbox && lightboxContent) {
-    projectTrack.addEventListener('click', (e) => {
-      const img = e.target.closest('.slide img');
-      const vid = e.target.closest('.slide video');
-
-      if (img) {
+      // ignore clones for routing
+      if (slide.dataset.clone === '1') {
         e.preventDefault();
-        openLightboxImage(img.src, img.alt || '');
         return;
       }
 
-      if (vid) {
-        e.preventDefault();
-        const src = vid.currentSrc || vid.src || (vid.querySelector('source')?.src) || '';
-        if (src) openLightboxVideo(src);
+      e.preventDefault();
+      goToProjectFromSlide(slide, { updateHash: true });
+    });
+
+    backBtn?.addEventListener('click', () => backToHome({ updateHash: true }));
+
+    if (projectTrack && lightbox && lightboxContent) {
+      projectTrack.addEventListener('click', (e) => {
+        const img = e.target.closest('.slide img');
+        const vid = e.target.closest('.slide video');
+
+        if (img) {
+          e.preventDefault();
+          openLightboxImage(img.src, img.alt || '');
+          return;
+        }
+        if (vid) {
+          e.preventDefault();
+          const src = vid.currentSrc || vid.src || (vid.querySelector('source')?.src) || '';
+          if (src) openLightboxVideo(src);
+        }
+      });
+    }
+
+    if (lightbox) {
+      lightbox.addEventListener('click', (e) => {
+        if (e.target === lightbox || e.target.classList.contains('lightbox__backdrop')) closeLightbox();
+      });
+    }
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeLightbox(); });
+
+    // loop infini mobile
+    if (isTouchOrSmall) {
+      window.addEventListener('load', () => initInfiniteSlider(homeSlider, homeTrack));
+    }
+
+    // -------- HASH ROUTER for THIS portfolio --------
+    function portfolioMode() {
+      return root.classList.contains('portfolio--video') ? 'video' : 'web';
+    }
+
+    function findSlideBySlug(slug) {
+      if (!slug) return null;
+      // uniquement slides NON clones
+      const selector = `.sliders_works .slide:not([data-clone="1"])[href="${slug}"], .sliders_works .slide:not([data-clone="1"])[href="/${slug}"], .sliders_works .slide:not([data-clone="1"])[href="#${slug}"]`;
+      return root.querySelector(selector);
+    }
+
+    function syncFromHash() {
+      const { mode, slug } = parseAppHash();
+      if (mode !== portfolioMode()) return;
+
+      if (!slug) {
+        // hash = #web ou #video => home
+        backToHome({ updateHash: false });
+        return;
       }
+
+      const slide = findSlideBySlug(slug);
+      if (!slide) return;
+
+      // ouvre sans réécrire le hash (sinon boucle)
+      goToProjectFromSlide(slide, { updateHash: false });
+    }
+
+    // au load : si on a #mode:slug -> ouvre
+    window.addEventListener('load', () => {
+      const { slug } = parseAppHash();
+      if (slug) syncFromHash();
+    });
+
+    // hashchange/back/forward
+    window.addEventListener('hashchange', () => {
+      if (_isOpeningFromHash) return;
+      syncFromHash();
+    });
+    window.addEventListener('popstate', () => {
+      if (_isOpeningFromHash) return;
+      syncFromHash();
     });
   }
 
-  if (lightbox) {
-    lightbox.addEventListener('click', (e) => {
-      if (e.target === lightbox || e.target.classList.contains('lightbox__backdrop')) {
-        closeLightbox();
-      }
-    });
-  }
-
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-      closeLightbox();
-    }
-  });
-
-  // Back/forward navigateur
-    // Back/forward navigateur
-  window.addEventListener('popstate', () => {
-    // On considère "home" = basePath (ex: "/portfolio-2025/")
-    const isHome = location.pathname === basePath;
-
-    if (isHome) {
-      projectView.hidden = true;
-      if (typeof gsap !== 'undefined') {
-        gsap.set(appRail, { yPercent: 0 });
-      } else {
-        appRail.style.transform = 'translateY(0%)';
-      }
-      document.body.classList.remove(
-        'is-project-ardko',
-        'is-grain-ardko',
-        'is-project-holora',
-        'glitch-active'
-      );
-      return;
-    }
-
-    // On récupère juste le "slug" final: "project-1"
-    const pathSlug = location.pathname.split('/').filter(Boolean).pop();
-
-    const target = [...homeSlides].find(s => {
-      const href = s.getAttribute('href') || '';
-      const slug = href.split('/').filter(Boolean).pop();
-      return slug === pathSlug;
-    });
-
-    if (target) {
-      const data = parseSlideData(target);
-      fillProjectView(data);
-      projectView.hidden = false;
-      if (typeof gsap !== 'undefined') {
-        gsap.set(appRail, { yPercent: -100 });
-      } else {
-        appRail.style.transform = 'translateY(-100%)';
-      }
-
-      const isArdko  = (data.projectId || '').toLowerCase() === 'ardko';
-      const isHolora =
-        (data.projectId || '').toLowerCase() === 'holora' ||
-        (data.title || '').toLowerCase() === 'holora';
-
-      if (isArdko) {
-        document.body.classList.add('is-grain-ardko', 'is-project-ardko');
-      } else {
-        document.body.classList.remove('is-project-ardko', 'is-grain-ardko');
-      }
-
-      if (isHolora) {
-        document.body.classList.add('is-project-holora', 'glitch-active');
-      } else {
-        document.body.classList.remove('is-project-holora', 'glitch-active');
-      }
-
-      const btn = projectView.querySelector('.btn.view_site');
-      if (btn) {
-        if (window._initCTAMarquee && !btn._marqueeInit) window._initCTAMarquee(btn);
-        else btn._marqueeRecalc && btn._marqueeRecalc();
-      }
-    } else {
-      // Pas de slide trouvée → on reste sur la vue projet mais on nettoie les classes globales
-      projectView.hidden = false;
-      if (typeof gsap !== 'undefined') {
-        gsap.set(appRail, { yPercent: -100 });
-      } else {
-        appRail.style.transform = 'translateY(-100%)';
-      }
-      document.body.classList.remove(
-        'is-project-ardko',
-        'is-grain-ardko',
-        'is-project-holora',
-        'glitch-active'
-      );
-    }
-  });
-
-
-  window.addEventListener('load', () => {
-    forcePaint(homeSlider);
-    forcePaint(document.body);
-  });
+  document.querySelectorAll('.portfolio').forEach(initPortfolio);
 })();
 
-// == Contact Drawer (clic uniquement) ==
+/* =========================================================
+   Contact Drawer (push .app-modes)
+========================================================= */
 (() => {
-  const btnContact = document.querySelector('.btn-contact');
-  const appRail    = document.querySelector('.app-rail') || document.body;
-  const panel      = document.getElementById('contact-panel');
-  const scrim      = document.querySelector('.contact-scrim');
-  const btnClose   = panel?.querySelector('.contact-close');
+  const panel = document.getElementById('contact-panel');
+  const scrim = document.querySelector('.contact-scrim');
+  const btnClose = panel?.querySelector('.contact-close');
+  const modesTrack = document.querySelector('.app-modes');
 
-  if (!btnContact || !panel || !scrim || typeof gsap === 'undefined') return;
+  if (!panel || !scrim || !modesTrack || typeof gsap === 'undefined') return;
 
   const getPanelWidth = () => Math.min(window.innerWidth * 0.5, 700);
 
-  let lastFocused = null;
+  const showForAnim = () => { panel.hidden = false; scrim.hidden = false; };
+  const hideIfClosed = (tl) => { if (tl.progress() === 0) { panel.hidden = true; scrim.hidden = true; } };
 
-  const showForAnim = () => {
-    panel.hidden = false;
-    scrim.hidden = false;
-  };
-
-  const hideIfClosed = (tl) => {
-    if (tl.progress() === 0) {
-      panel.hidden = true;
-      scrim.hidden = true;
-    }
-  };
-
-  const tl = gsap.timeline({
-    paused: true,
-    defaults: { duration: 0.5, ease: "power3.out" }
-  });
+  const tl = gsap.timeline({ paused: true, defaults: { duration: 0.5, ease: "power3.out" } });
 
   const build = () => {
     tl.clear();
     const w = getPanelWidth();
 
     gsap.set(panel, { x: '100%' });
-    gsap.set(appRail, { x: 0 });
+    gsap.set(modesTrack, { x: gsap.getProperty(modesTrack, "x") || 0 });
     gsap.set(scrim, { opacity: 0, pointerEvents: 'none' });
 
     tl.addLabel('start')
-      .to(scrim, {
-        opacity: 1,
-        onStart: () => { scrim.style.pointerEvents = 'auto'; }
-      }, 'start')
+      .to(scrim, { opacity: 1, onStart: () => { scrim.style.pointerEvents = 'auto'; } }, 'start')
       .to(panel, { x: 0 }, 'start')
-      .to(appRail, { x: -w }, 'start');
+      .to(modesTrack, { x: `-=${w}` }, 'start');
   };
 
   showForAnim();
@@ -979,54 +784,36 @@ if (!isTouchDevice) {
     hideIfClosed(tl);
   });
 
-  const openPanel = () => {
-    showForAnim();
-    lastFocused = document.activeElement;
-    tl.play().then(() => {
-      panel.querySelector('#contact-title')?.focus?.();
-    });
-  };
-
+  const openPanel = () => { showForAnim(); tl.play(); };
   const closePanel = () => {
     tl.reverse().then(() => {
       scrim.style.pointerEvents = 'none';
       hideIfClosed(tl);
-      lastFocused?.focus?.();
     });
   };
 
-  btnContact.addEventListener('click', (e) => {
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.btn-contact');
+    if (!btn) return;
     e.preventDefault();
-    if (tl.progress() === 1 && !tl.reversed()) {
-      closePanel();
-    } else {
-      openPanel();
-    }
+    if (tl.progress() === 1 && !tl.reversed()) closePanel();
+    else openPanel();
   });
 
   btnClose?.addEventListener('click', closePanel);
   scrim.addEventListener('click', closePanel);
-
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closePanel();
-  });
-
-  window.addEventListener('closeContact', closePanel);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closePanel(); });
 })();
 
-// === CTA "View site" : marquee =====
+/* =========================================================
+   CTA "View site" : marquee
+========================================================= */
 (() => {
-  if (typeof gsap === "undefined") {
-    console.warn("GSAP manquant pour l'animation du bouton View site.");
-    return;
-  }
+  if (typeof gsap === "undefined") return;
 
   const debounce = (fn, wait = 150) => {
     let t;
-    return (...a) => {
-      clearTimeout(t);
-      t = setTimeout(() => fn(...a), wait);
-    };
+    return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), wait); };
   };
 
   function initCTA(btn) {
@@ -1051,9 +838,7 @@ if (!isTouchDevice) {
     function fillTrack() {
       track.innerHTML = '';
       track.appendChild(makeItem());
-      while (track.scrollWidth < btn.clientWidth * 3) {
-        track.appendChild(makeItem());
-      }
+      while (track.scrollWidth < btn.clientWidth * 3) track.appendChild(makeItem());
       track.innerHTML += track.innerHTML;
     }
 
@@ -1105,7 +890,9 @@ if (!isTouchDevice) {
   document.querySelectorAll('.btn.view_site').forEach(initCTA);
 })();
 
-// ==== CURSEUR CUSTOM ====
+/* =========================================================
+   Curseur custom
+========================================================= */
 document.addEventListener('DOMContentLoaded', () => {
   const cursor = document.querySelector('.custom-cursor');
   if (!cursor) return;
@@ -1146,9 +933,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const t = Math.min(speed / speedForMax, 1);
     targetStretch = 1 + (maxStretch - 1) * t;
 
-    if (dist > 0.01) {
-      targetAngle = Math.atan2(dy, dx) * (180 / Math.PI);
-    }
+    if (dist > 0.01) targetAngle = Math.atan2(dy, dx) * (180 / Math.PI);
 
     currentX = e.clientX;
     currentY = e.clientY;
@@ -1172,7 +957,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const rotate    = `rotate(${currentAngle}deg)`;
 
     cursor.style.transform = `${translate} ${center} ${rotate}`;
-
     requestAnimationFrame(animate);
   }
 
@@ -1180,196 +964,138 @@ document.addEventListener('DOMContentLoaded', () => {
   requestAnimationFrame(animate);
 });
 
-// ==== PRELOADER (home qui monte en même temps) ====
+/* =========================================================
+   Preloader (anime app-modes)
+========================================================= */
 (() => {
   const preloader = document.getElementById('preloader');
-  const appRail   = document.querySelector('.app-rail');
-
-  if (!preloader || !appRail || typeof gsap === 'undefined') return;
+  const modesTrack = document.querySelector('.app-modes');
+  if (!preloader || !modesTrack || typeof gsap === 'undefined') return;
 
   const percentEl = preloader.querySelector('.preloader__percent');
   const counter   = { value: 0 };
 
-  // On place le rail SOUS le viewport au tout début
-  gsap.set(appRail, { yPercent: 100 });
+  gsap.set(modesTrack, { yPercent: 100 });
 
   window.addEventListener('load', () => {
     const tl = gsap.timeline();
 
-    // 1) 0% -> 100% sur ~2.2s
     tl.to(counter, {
       value: 100,
-      duration: 2.2,            // ajuste 2–3s si tu veux
+      duration: 2.2,
       ease: 'power2.out',
-      onUpdate() {
-        percentEl.textContent = `${Math.round(counter.value)}%`;
-      }
+      onUpdate() { percentEl.textContent = `${Math.round(counter.value)}%`; }
     });
 
-    // 2) en même temps :
-    //    - le loader glisse vers le haut
-    //    - la home (app-rail) remonte du bas vers sa position normale
     tl.to(preloader, {
       yPercent: -100,
       duration: 1.0,
       ease: 'power3.inOut',
-      onComplete() {
-        preloader.remove();     // on le supprime une fois sorti
-      }
-    }, "-=0.3");                // petit chevauchement avec la fin du pourcentage
+      onComplete() { preloader.remove(); }
+    }, "-=0.3");
 
-    tl.to(appRail, {
+    tl.to(modesTrack, {
       yPercent: 0,
       duration: 1.0,
       ease: 'power3.inOut'
-    }, "<");                    // "<" = commence en même temps que le mouvement du loader
+    }, "<");
   });
 })();
 
-
-  // === MEMOIRE DE POSITION DES SLIDERS (home + projet) ===
-
+/* =========================================================
+   VIDEO FLASHLIGHT : MOUSE (Desktop) + GYRO (Mobile)
+========================================================= */
 (() => {
-  const sliders = {
-    home: {
-      el: document.querySelector(".sliders_works"),
-      track: document.querySelector(".slides_track"),
-      pos: 0
-    },
-    project: {
-      el: document.querySelector(".sliders_project"),
-      track: document.querySelector(".project_track"),
-      pos: 0
+  const videoSection = document.querySelector('.portfolio--video');
+  if (!videoSection) return;
+
+  // --- CONFIGURATION ---
+  const ease = 0.1; // Inertie (plus bas = plus lent)
+  
+  // Variables de position
+  let targetX = window.innerWidth / 2;
+  let targetY = window.innerHeight / 2;
+  let currentX = targetX;
+  let currentY = targetY;
+  
+  let isAnimating = false;
+  let hasGyro = false;
+
+  // --- FONCTION D'ANIMATION (Inertie) ---
+  function animate() {
+    // Formule LERP pour la fluidité
+    currentX += (targetX - currentX) * ease;
+    currentY += (targetY - currentY) * ease;
+
+    videoSection.style.setProperty('--mask-x', `${currentX}px`);
+    videoSection.style.setProperty('--mask-y', `${currentY}px`);
+
+    // On continue tant que la section est visible (pour économiser la batterie sur mobile)
+    requestAnimationFrame(animate);
+  }
+
+  // Lancer la boucle
+  animate();
+
+  // --- 1. MODE SOURIS (Desktop) ---
+  window.addEventListener('mousemove', (e) => {
+    // Si on a détecté un gyroscope, on ignore la souris pour éviter les conflits
+    if (hasGyro) return;
+    targetX = e.clientX;
+    targetY = e.clientY;
+  });
+
+  // --- 2. MODE GYROSCOPE (Mobile) ---
+  function handleMotion(e) {
+    // Si l'event renvoie null (pas de capteur), on arrête
+    if (e.gamma === null || e.beta === null) return;
+
+    if (!hasGyro) {
+      hasGyro = true;
+      document.body.classList.add('has-gyro'); // Active le CSS mobile
     }
+
+    // GAMMA (Inclinaison Gauche/Droite) : de -45° à +45°
+    // On mappe ça sur la largeur de l'écran (0 à innerWidth)
+    // Math : (valeur + 45) / 90 * largeur
+    let x = e.gamma; 
+    // On limite (clamp) pour ne pas sortir trop de l'écran
+    if (x < -45) x = -45;
+    if (x > 45) x = 45;
+    
+    targetX = ((x + 45) / 90) * window.innerWidth;
+
+    // BETA (Inclinaison Avant/Arrière) : 
+    // Quand on tient le tel face à soi, on est environ à 45° (beta).
+    // On va dire que la zone active est de 20° (couché) à 70° (debout).
+    let y = e.beta;
+    if (y < 20) y = 20;
+    if (y > 70) y = 70;
+
+    targetY = ((y - 20) / 50) * window.innerHeight;
+  }
+
+  // Écouteur standard (Android)
+  window.addEventListener('deviceorientation', handleMotion);
+
+  // --- 3. GESTION PERMISSION IOS (iPhone) ---
+  // Apple exige un clic utilisateur pour activer les capteurs.
+  // On va utiliser le clic global sur le site pour demander la permission une fois.
+  const askPermission = () => {
+    if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+      DeviceOrientationEvent.requestPermission()
+        .then(response => {
+          if (response === 'granted') {
+            window.addEventListener('deviceorientation', handleMotion);
+          }
+        })
+        .catch(console.error);
+    }
+    // Une fois demandé (accepté ou refusé), on arrête d'écouter les clics pour ça
+    document.removeEventListener('click', askPermission);
   };
 
-  // --- 1) Écouter le scroll mobile ---
-  function trackScroll(key) {
-    const slider = sliders[key];
-    if (!slider || !slider.el) return;
-
-    slider.el.addEventListener("scroll", () => {
-      slider.pos = slider.el.scrollLeft;
-    }, { passive: true });
-  }
-
-  // --- 2) Écouter le pan GSAP desktop ---
-  function trackPan(key) {
-    const slider = sliders[key];
-    if (!slider || !slider.track) return;
-
-    let lastX = 0;
-    const obs = new MutationObserver(() => {
-      const style = getComputedStyle(slider.track);
-      const matrix = new WebKitCSSMatrix(style.transform);
-      lastX = matrix.m41;
-      slider.pos = lastX;
-    });
-
-    obs.observe(slider.track, { attributes: true, attributeFilter: ["style"] });
-  }
-
-  // --- 3) Restaurer la position au moment où la vue apparaît ---
-  function restorePosition(key) {
-    const slider = sliders[key];
-    if (!slider || !slider.el || !slider.track) return;
-
-    requestAnimationFrame(() => {
-      // mobile
-      if (window.matchMedia("(pointer: coarse)").matches) {
-        slider.el.scrollLeft = slider.pos;
-      } 
-      // desktop gsap-pan
-      else {
-        gsap.set(slider.track, { x: slider.pos });
-      }
-    });
-  }
-
-  // --- Init écouteurs ---
-  trackScroll("home");
-  trackScroll("project");
-  trackPan("home");
-  trackPan("project");
-
-  // --- Hook navigation vue → rappeler la position ---
-  window.addEventListener("view-project-open", () => restorePosition("project"));
-  window.addEventListener("view-home-open", () => restorePosition("home"));
-
-  // ===== LOOP INFINI DES SLIDERS SUR MOBILE / TABLETTE =====
-(() => {
-  const isTouchOrSmall =
-    window.matchMedia('(pointer: coarse)').matches ||
-    window.matchMedia('(max-width: 1024px)').matches;
-
-  // On active la boucle uniquement sur mobile / tablette
-  if (!isTouchOrSmall) return;
-
-  function initInfiniteSlider(container, track) {
-    if (!container || !track) return;
-    if (track.dataset.loopInit === '1') return; // déjà initialisé
-
-    const slides = Array.from(track.children);
-    if (slides.length < 2) return; // pas la peine de boucler si 1 seule slide
-
-    // Largeur d'origine AVANT duplication
-    const originalWidth = track.scrollWidth;
-
-    // Duplique chaque slide une fois (on double la longueur)
-    slides.forEach((slide) => {
-      const clone = slide.cloneNode(true);
-      clone.setAttribute('data-clone', '1');
-      track.appendChild(clone);
-    });
-
-    track.dataset.loopInit = '1';
-
-    let lastLeft = container.scrollLeft;
-    let ticking = false;
-
-    function onScroll() {
-      lastLeft = container.scrollLeft;
-      if (ticking) return;
-
-      ticking = true;
-      requestAnimationFrame(() => {
-        const max = originalWidth;
-
-        // si on dépasse la fin du set original → on recule d'une longueur
-        if (lastLeft >= max) {
-          container.scrollLeft = lastLeft - max;
-        }
-        // si jamais on repart trop à gauche, on remonte depuis la fin
-        else if (lastLeft <= 0) {
-          container.scrollLeft = lastLeft + max;
-        }
-
-        ticking = false;
-      });
-    }
-
-    container.addEventListener('scroll', onScroll, { passive: true });
-  }
-
-  // 🟡 HOME : les slides sont déjà là au chargement
-  window.addEventListener('load', () => {
-    const homeContainer = document.querySelector('.sliders_works');
-    const homeTrack     = document.querySelector('.slides_track');
-    initInfiniteSlider(homeContainer, homeTrack);
-  });
-
-  // 🟣 PROJET : les slides sont injectées quand la vue projet s’ouvre
-  window.addEventListener('view-project-open', () => {
-    const projectContainer = document.querySelector('.sliders_project');
-    const projectTrack     = document.querySelector('.project_track');
-    initInfiniteSlider(projectContainer, projectTrack);
-  });
+  // Au premier clic n'importe où sur la page (ex: bouton Videomaker), on demande
+  document.addEventListener('click', askPermission);
 
 })();
-
-
-})();
-
-
-
-
