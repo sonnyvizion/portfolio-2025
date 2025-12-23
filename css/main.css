@@ -1219,95 +1219,87 @@ html, body {
 }
 
 /* ===========================
-   BACKGROUND VIDÉO "FLASHLIGHT" ORGANIQUE
+   BACKGROUND VIDÉO + CANVAS BLOB
    =========================== */
 
-/* 1. Le conteneur principal */
 .portfolio--video {
-  background-color: #000000; /* Fond noir */
+  background-color: #000000;
   position: relative;
-  /* Variables initiales (seront mises à jour par le JS avec inertie) */
+  /* Variables pour le fallback mobile */
   --mask-x: 50vw;
   --mask-y: 50vh;
 }
 
-/* 2. Le wrapper de la vidéo */
+/* 1. La Vidéo (Tout au fond) */
 .bg-video-wrap {
   position: absolute;
   inset: 0;
-  z-index: 0; 
+  z-index: 0;
   overflow: hidden;
   pointer-events: none;
 }
 
-/* 3. La vidéo avec le masque organique */
 .bg-video-wrap video {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  opacity: 1;
-
-  /* L'EFFET MAGIQUE - Plus large et plus doux */
-  /* On utilise des % (vw/vh) pour la taille pour que ça s'adapte aux grands écrans */
-  /* Le dégradé est très étalé (de 0% à 70%) pour un bord très flou */
-  
-  -webkit-mask-image: radial-gradient(
-    circle 35vw at var(--mask-x) var(--mask-y),
-    black 0%,
-    black 20%,       /* Cœur net plus petit */
-    transparent 70%  /* Longue transition vers le transparent */
-  );
-  
-  mask-image: radial-gradient(
-    circle 35vw at var(--mask-x) var(--mask-y),
-    black 0%,
-    black 10%,
-    transparent 70%
-  );
-
-  -webkit-mask-repeat: no-repeat;
-  mask-repeat: no-repeat;
-  
-  /* Important : PAS de transition CSS ici, c'est le JS qui gère la fluidité */
+  opacity: 1; 
 }
 
-/* 4. Le contenu au-dessus */
+/* 2. Le Canvas (Le masque noir organique) */
+#blob-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1; /* Au-dessus de la vidéo... */
+  pointer-events: none; /* ...mais laisse passer les clics ! */
+}
+
+/* 3. Le Contenu (Textes, Nav - DOIT ÊTRE DEVANT) */
 .portfolio--video #app {
   position: relative;
-  z-index: 2;
+  z-index: 2; /* Au-dessus du canvas noir */
 }
 
-/* Transparence des blocs de contenu */
+/* On s'assure que les conteneurs sont transparents */
 .portfolio--video .view, 
 .portfolio--video .container {
   background-color: transparent !important;
 }
 
-/* Version Mobile : Pas d'effet, vidéo sombre */
-/* === VERSION MOBILE / TABLETTE === */
-@media (pointer: coarse) {
-  /* Par défaut, on garde la vidéo un peu sombre et sans masque (fallback) */
-  .bg-video-wrap video {
-    transition: opacity 0.5s ease;
-    -webkit-mask-image: none;
-    mask-image: none;
-    opacity: 0.3;
-  }
 
-  /* Si le JS active le mode gyroscope, on remet le masque ! */
-  body.has-gyro .bg-video-wrap video {
-    opacity: 1;
-    -webkit-mask-image: radial-gradient(
-      circle 45vw at var(--mask-x) var(--mask-y), /* Un peu plus gros sur mobile */
-      black 0%,
-      black 20%,
-      transparent 65%
-    );
-    mask-image: radial-gradient(
-      circle 45vw at var(--mask-x) var(--mask-y),
-      black 0%,
-      black 20%,
-      transparent 65%
-    );
+/* ===========================
+   GESTION ÉTAT : PROJET OUVERT
+   =========================== */
+
+/* 1. Par défaut (fermé ou en transition) : 
+   La vue projet est transparente pour qu'on ne voit pas un bloc de couleur 
+   cacher le blob avant l'animation. */
+.portfolio--video .view--project {
+  background-color: transparent; 
+  transition: background-color 0.5s ease;
+}
+
+/* 2. QUAND LE PROJET EST OUVERT :
+   On cache le canvas (blob) et la vidéo. */
+.portfolio--video.is-project-open .bg-video-wrap {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease; /* Disparition douce */
+}
+
+/* 3. QUAND LE PROJET EST OUVERT :
+   La vue projet devient OPAQUE et prend la couleur définie par le JS via var(--bg).
+   !important est nécessaire pour écraser la transparence par défaut. */
+.portfolio--video.is-project-open .view--project {
+  background-color: var(--bg) !important; /* Prend la couleur du data-color */
+  transition: background-color 0.5s ease;
+}
+
+/* (Optionnel) Ajustement mobile pour être sûr */
+@media (pointer: coarse) {
+  .portfolio--video.is-project-open .bg-video-wrap {
+    opacity: 0 !important;
   }
 }

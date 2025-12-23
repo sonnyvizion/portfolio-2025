@@ -164,7 +164,7 @@ function setHash(mode, slug = '', replace = false) {
     };
   }
 
-  function buildProjectSlides(mediaList, altBase = 'project media') {
+function buildProjectSlides(mediaList, altBase = 'project media') {
     return (mediaList || []).map(src => {
       const trimmed = (src || '').trim();
       const low = trimmed.toLowerCase();
@@ -177,9 +177,11 @@ function setHash(mode, slug = '', replace = false) {
         low.includes('video');
 
       if (isVideo) {
+        // Note le style pointer-events: none sur la vidéo
+        // Cela force le clic à se faire sur le <a> parent
         return `
           <a class="slide" href="#" tabindex="-1">
-            <video class="project-video" autoplay muted loop playsinline>
+            <video class="project-video" autoplay muted loop playsinline style="pointer-events: none; width: 100%; height: 100%; object-fit: cover;">
               <source src="${trimmed}" type="video/mp4">
             </video>
           </a>
@@ -445,18 +447,33 @@ function setHash(mode, slug = '', replace = false) {
     function openLightboxVideo(src) {
       if (!lightbox || !lightboxContent) return;
       lightboxContent.innerHTML = '';
+      
       const video = document.createElement('video');
       video.className = 'lightbox__media';
-      video.autoplay = true;
-      video.muted = true;
-      video.loop = true;
-      video.playsInline = true;
-
+      
       const source = document.createElement('source');
       source.src = src;
       source.type = 'video/mp4';
-
       video.appendChild(source);
+
+      // --- LOGIQUE WEB vs FILMMAKER ---
+      const isFilmmaker = document.body.dataset.mode === 'video';
+
+      if (isFilmmaker) {
+        // Mode Filmmaker : Contrôles activés
+        video.controls = true;
+        video.autoplay = true; // On tente l'autoplay
+        video.muted = false;   // Avec le son (si le navigateur l'autorise)
+        video.loop = false;
+      } else {
+        // Mode Web : Boucle muette décorative
+        video.controls = false;
+        video.autoplay = true;
+        video.muted = true;
+        video.loop = true;
+        video.playsInline = true;
+      }
+
       lightboxContent.appendChild(video);
       showLightbox();
     }
@@ -554,17 +571,22 @@ function setHash(mode, slug = '', replace = false) {
       }
 
       if (heroProject) {
-        const bg = data.color || getComputedStyle(heroProject).getPropertyValue('--bg').trim();
+        // Récupère la couleur du slide, ou noir par défaut
+        const bg = data.color || '#000000'; 
         const fg = (data.fg && data.fg.trim()) || autoContrast(bg);
 
+        // Applique les couleurs aux variables CSS
         heroProject.style.setProperty('--bg', bg);
         heroProject.style.setProperty('--fg', fg);
+        
+        // ✅ C'EST CETTE LIGNE QUI FAIT MARCHER LE FOND UNI :
+        projectView.style.setProperty('--bg', bg); 
         projectView.style.setProperty('--fg', fg);
-        projectView.style.backgroundColor = bg;
 
         document.documentElement.style.setProperty('--cursor-color', fg);
       }
 
+      // ... (Reste de la fonction inchangé : gestion des images du slider) ...
       if (projectTrack) {
         projectTrack.innerHTML = buildProjectSlides(data.images, `${data.title} — image`);
         if (typeof gsap !== 'undefined') {
@@ -587,6 +609,8 @@ function setHash(mode, slug = '', replace = false) {
       fillProjectView(data);
 
       projectView.hidden = false;
+
+      root.classList.add('is-project-open');
 
       // Force le navigateur à recalculer la taille avant de lancer l'anim
       void appRail.offsetWidth; 
@@ -616,8 +640,18 @@ function setHash(mode, slug = '', replace = false) {
     }
 
     async function backToHome({ updateHash = true } = {}) {
+      
+      // 1. On désactive le mode "Projet Ouvert" (Le CSS remet l'opacité à 1)
+      root.classList.remove('is-project-open');
+
+      // ✅ CORRECTION : On force la vidéo à relancer la lecture
+      const bgVideo = root.querySelector('.bg-video-wrap video');
+      if (bgVideo) {
+        bgVideo.play().catch(() => { /* ignore erreur si déjà en lecture */ });
+      }
+
       if (typeof gsap !== 'undefined') {
-        // Retour à 0
+        // Retour à 0 (Animation du rail vers le bas)
         await gsap.to(appRail, { y: 0, duration: 1.0, ease: "power3.inOut" });
       } else {
         appRail.style.transform = 'translateY(0px)';
@@ -630,9 +664,10 @@ function setHash(mode, slug = '', replace = false) {
         setHash(mode, '', true);
       }
 
-      // reset theme basics
+      // Reset couleurs de base (Important pour le nettoyage)
       homeView.style.backgroundColor = homeBaseBG;
-      projectView.style.backgroundColor = projectBaseBG;
+      // On s'assure que la vue projet redevient transparente pour la prochaine ouverture
+      projectView.style.backgroundColor = 'transparent';
     }
 
     // -------- Click handlers --------
@@ -660,20 +695,27 @@ function setHash(mode, slug = '', replace = false) {
 
     backBtn?.addEventListener('click', () => backToHome({ updateHash: true }));
 
-    if (projectTrack && lightbox && lightboxContent) {
+    if (projectTrack && lightbox) {
       projectTrack.addEventListener('click', (e) => {
-        const img = e.target.closest('.slide img');
-        const vid = e.target.closest('.slide video');
+        // 1. On cherche le conteneur principal (la slide)
+        const slide = e.target.closest('.slide');
+        if (!slide) return; // Si on clique à côté, on ne fait rien
 
-        if (img) {
-          e.preventDefault();
-          openLightboxImage(img.src, img.alt || '');
-          return;
-        }
+        // 2. On empêche le rechargement de page ou le saut (href="#")
+        e.preventDefault();
+
+        // 3. On regarde ce qu'il y a dans la slide
+        const vid = slide.querySelector('video');
+        const img = slide.querySelector('img');
+
+        // Cas VIDÉO
         if (vid) {
-          e.preventDefault();
           const src = vid.currentSrc || vid.src || (vid.querySelector('source')?.src) || '';
           if (src) openLightboxVideo(src);
+        } 
+        // Cas IMAGE
+        else if (img) {
+          openLightboxImage(img.src, img.alt || '');
         }
       });
     }
@@ -1003,99 +1045,144 @@ document.addEventListener('DOMContentLoaded', () => {
 })();
 
 /* =========================================================
-   VIDEO FLASHLIGHT : MOUSE (Desktop) + GYRO (Mobile)
+   ORGANIC BLOB FLASHLIGHT (Canvas 2D + Noise + Vitesse)
 ========================================================= */
 (() => {
   const videoSection = document.querySelector('.portfolio--video');
-  if (!videoSection) return;
+  const canvas = document.getElementById('blob-canvas');
+  if (!videoSection || !canvas) return;
 
-  // --- CONFIGURATION ---
-  const ease = 0.1; // Inertie (plus bas = plus lent)
-  
-  // Variables de position
-  let targetX = window.innerWidth / 2;
-  let targetY = window.innerHeight / 2;
-  let currentX = targetX;
-  let currentY = targetY;
-  
-  let isAnimating = false;
-  let hasGyro = false;
+  const ctx = canvas.getContext('2d');
 
-  // --- FONCTION D'ANIMATION (Inertie) ---
-  function animate() {
-    // Formule LERP pour la fluidité
-    currentX += (targetX - currentX) * ease;
-    currentY += (targetY - currentY) * ease;
-
-    videoSection.style.setProperty('--mask-x', `${currentX}px`);
-    videoSection.style.setProperty('--mask-y', `${currentY}px`);
-
-    // On continue tant que la section est visible (pour économiser la batterie sur mobile)
-    requestAnimationFrame(animate);
-  }
-
-  // Lancer la boucle
-  animate();
-
-  // --- 1. MODE SOURIS (Desktop) ---
-  window.addEventListener('mousemove', (e) => {
-    // Si on a détecté un gyroscope, on ignore la souris pour éviter les conflits
-    if (hasGyro) return;
-    targetX = e.clientX;
-    targetY = e.clientY;
-  });
-
-  // --- 2. MODE GYROSCOPE (Mobile) ---
-  function handleMotion(e) {
-    // Si l'event renvoie null (pas de capteur), on arrête
-    if (e.gamma === null || e.beta === null) return;
-
-    if (!hasGyro) {
-      hasGyro = true;
-      document.body.classList.add('has-gyro'); // Active le CSS mobile
-    }
-
-    // GAMMA (Inclinaison Gauche/Droite) : de -45° à +45°
-    // On mappe ça sur la largeur de l'écran (0 à innerWidth)
-    // Math : (valeur + 45) / 90 * largeur
-    let x = e.gamma; 
-    // On limite (clamp) pour ne pas sortir trop de l'écran
-    if (x < -45) x = -45;
-    if (x > 45) x = 45;
-    
-    targetX = ((x + 45) / 90) * window.innerWidth;
-
-    // BETA (Inclinaison Avant/Arrière) : 
-    // Quand on tient le tel face à soi, on est environ à 45° (beta).
-    // On va dire que la zone active est de 20° (couché) à 70° (debout).
-    let y = e.beta;
-    if (y < 20) y = 20;
-    if (y > 70) y = 70;
-
-    targetY = ((y - 20) / 50) * window.innerHeight;
-  }
-
-  // Écouteur standard (Android)
-  window.addEventListener('deviceorientation', handleMotion);
-
-  // --- 3. GESTION PERMISSION IOS (iPhone) ---
-  // Apple exige un clic utilisateur pour activer les capteurs.
-  // On va utiliser le clic global sur le site pour demander la permission une fois.
-  const askPermission = () => {
-    if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-      DeviceOrientationEvent.requestPermission()
-        .then(response => {
-          if (response === 'granted') {
-            window.addEventListener('deviceorientation', handleMotion);
-          }
-        })
-        .catch(console.error);
-    }
-    // Une fois demandé (accepté ou refusé), on arrête d'écouter les clics pour ça
-    document.removeEventListener('click', askPermission);
+  // CONFIGURATION
+  const config = {
+    baseRadius: 300,    // Taille de base AU REPOS (un peu plus gros qu'avant)
+    minRadius: 150,     // Taille minimale quand on va très vite
+    shrinkFactor: 0.5,  // Force de la réduction (plus haut = rétrécit plus vite)
+    noiseScale: 2.2,    // Complexité des formes
+    noiseSpeed: 0.005,  // Vitesse du bouillonnement
+    viscosity: 0.09     // Inertie
   };
 
-  // Au premier clic n'importe où sur la page (ex: bouton Videomaker), on demande
-  document.addEventListener('click', askPermission);
+  let width, height;
+  let time = 0;
+  
+  let target = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+  let current = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
 
+  // --- Simplex Noise Simplifié ---
+  const noise = (function() {
+    const p = new Uint8Array(512);
+    const perm = new Uint8Array(512);
+    for(let i=0; i<256; i++) p[i] = i;
+    for(let i=0; i<256; i++) {
+      let r = i + ~~(Math.random() * (256 - i));
+      let t = p[i]; p[i] = p[r]; p[r] = t;
+    }
+    for(let i=0; i<512; i++) perm[i] = p[i & 255];
+    function fade(t) { return t * t * t * (t * (t * 6 - 15) + 10); }
+    function lerp(t, a, b) { return a + t * (b - a); }
+    function grad(hash, x, y, z) {
+      const h = hash & 15;
+      const u = h < 8 ? x : y, v = h < 4 ? y : h === 12 || h === 14 ? x : z;
+      return ((h & 1) === 0 ? u : -u) + ((h & 2) === 0 ? v : -v);
+    }
+    return function(x, y, z) {
+      const X = Math.floor(x) & 255, Y = Math.floor(y) & 255, Z = Math.floor(z) & 255;
+      x -= Math.floor(x); y -= Math.floor(y); z -= Math.floor(z);
+      const u = fade(x), v = fade(y), w = fade(z);
+      const A = perm[X] + Y, AA = perm[A] + Z, AB = perm[A + 1] + Z;
+      const B = perm[X + 1] + Y, BA = perm[B] + Z, BB = perm[B + 1] + Z;
+      return lerp(w, lerp(v, lerp(u, grad(perm[AA], x, y, z), grad(perm[BA], x - 1, y, z)),
+                             lerp(u, grad(perm[AB], x, y - 1, z), grad(perm[BB], x - 1, y - 1, z))),
+                     lerp(v, lerp(u, grad(perm[AA + 1], x, y, z - 1), grad(perm[BA + 1], x - 1, y, z - 1)),
+                             lerp(u, grad(perm[AB + 1], x, y - 1, z - 1), grad(perm[BB + 1], x - 1, y - 1, z - 1))));
+    };
+  })();
+
+  // RESIZE
+  function resize() {
+    width = window.innerWidth;
+    height = window.innerHeight;
+    canvas.width = width;
+    canvas.height = height;
+    if (width < 768) {
+        config.baseRadius = 180;
+        config.minRadius = 100;
+    } else {
+        config.baseRadius = Math.max(300, width * 0.22);
+        config.minRadius = config.baseRadius * 0.5; // Taille min = 50% de la taille max
+    }
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  // MOUSE MOVE
+  window.addEventListener('mousemove', (e) => {
+    target.x = e.clientX;
+    target.y = e.clientY;
+  });
+
+  // RENDER LOOP
+  function render() {
+    // 1. Calcul de l'inertie de position
+    const dx = target.x - current.x;
+    const dy = target.y - current.y;
+    current.x += dx * config.viscosity;
+    current.y += dy * config.viscosity;
+    
+    time += config.noiseSpeed;
+
+    // 2. NOUVEAU : Calcul de la taille dynamique basée sur la vitesse
+    // La "tension" est la distance qui reste à parcourir. Grande distance = grande vitesse.
+    const tension = Math.hypot(dx, dy); 
+    // On calcule de combien on doit rétrécir
+    const shrinkage = tension * config.shrinkFactor;
+    // On applique le rétrécissement en s'assurant de ne pas descendre sous le rayon minimum
+    let dynamicRadius = Math.max(config.minRadius, config.baseRadius - shrinkage);
+
+    // 3. Dessin du fond noir
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(0, 0, width, height);
+
+    // 4. Dessin de la gomme (blob)
+    ctx.globalCompositeOperation = 'destination-out';
+    
+    ctx.beginPath();
+    const samples = 110;
+    const angleStep = (Math.PI * 2) / samples;
+
+    for (let i = 0; i <= samples; i++) {
+      const angle = i * angleStep;
+      
+      // Bruit un peu plus nerveux quand ça bouge vite (optionnel)
+      const noiseStrength = time + (tension * 0.001);
+
+      const noiseX = Math.cos(angle) * config.noiseScale + noiseStrength;
+      const noiseY = Math.sin(angle) * config.noiseScale + noiseStrength;
+      const n = noise(noiseX, noiseY, time * 0.6); 
+      
+      // Variation de rayon (plus la taille est petite, moins on fait de variation pour éviter les bugs)
+      const variationAmount = dynamicRadius * 0.3; 
+      const finalRadius = dynamicRadius + (n * variationAmount);
+
+      const x = current.x + Math.cos(angle) * finalRadius;
+      const y = current.y + Math.sin(angle) * finalRadius;
+
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    
+    ctx.closePath();
+    ctx.fill();
+
+    requestAnimationFrame(render);
+  }
+
+  // Flou CSS plus fort pour un aspect plus liquide
+  canvas.style.filter = 'blur(50px)';
+  canvas.style.transform = 'scale(1.15)';
+
+  render();
 })();
