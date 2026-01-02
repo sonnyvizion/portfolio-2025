@@ -250,6 +250,14 @@ h1, nav {
 .view--home { position: relative; }
 .view--project { position: relative; }
 
+.view--project{
+  color: var(--fg);              /* <-- rend la couleur dispo pour tout (CTA compris) */
+}
+.project_cta{
+  color: var(--fg) !important;   /* <-- force la couleur du CTA */
+}
+
+
 /* Slider projet : même look & feel que le slider home */
 .sliders_project {
   height: 35vh;
@@ -308,32 +316,65 @@ h1, nav {
 }
 
 
+/* La vue projet doit être le repère */
+.view--project{ position: relative; }
 
-/* Sous le slider projet */
-.project_cta {
-  padding: 1.2vw 5vw 0;   /* même left/right que .container */
-  margin-bottom: 1.2vw;   /* espace avec le slider */
+/* CTA juste AU-DESSUS du slider (desktop : slider = 35vh) */
+.project_cta{
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(35vh + 1.2vw);
+  z-index: 20;
   display: flex;
-  align-items: center;
   justify-content: center;
-  font-family: 'PP Neue Montreal';
-  font-weight: 700;
+  pointer-events: none;
+  color: inherit; 
+    text-transform: uppercase;
+    padding: 0;
+    background-color: transparent;
 }
+.project_cta .btn.view_site{ pointer-events: auto; }
+
+/* Tablet/Mobile : slider = 40vh chez toi */
+@media (max-width: 1024px){
+  .project_cta{ bottom: calc(40vh + 1rem); }
+}
+
 
 /* Bouton de base */
 /* CTA suit le thème (texte + bord) */
 .btn.view_site{
-  display:inline-flex;
-  align-items:center;
-  color: var(--fg);                 /* ← hérite du thème */
-  background: transparent;          /* fond transparent pour suivre la page */
-  text-transform:uppercase;
-  letter-spacing:.12em;
-  font-weight:600;
-  font-size:.9rem;
-  overflow:hidden;
-  position:relative;
+  pointer-events: auto; /* le bouton reste cliquable */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: inherit !important; 
+  background: transparent;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  font-weight: 600;
+  font-size: .9rem;
+  overflow: hidden;
+  position: relative;
   width: 10vw;
+  padding: .6rem 1rem;
+  border-radius: 999px;
+}
+
+/* Marquee */
+.btn.view_site .marquee_track{
+  display:flex;
+  align-items:center;
+  white-space:nowrap;
+  will-change: transform;
+  color: inherit;
+}
+.btn.view_site .marquee_item{ flex:0 0 auto; padding-right:.6ch; }
+
+@media (max-width: 1024px){
+  .btn.view_site{ width: 30vw; }
+  .project_cta{ bottom: 1.5vh; }
 }
 
 /* La piste garde la couleur courante */
@@ -615,13 +656,6 @@ nav a:hover {
 .slide { cursor: pointer; }
 .slide:focus { outline: none; }
 .slide:focus-visible { outline: none; }
-
-.project_cta {
-    color: #000000;
-    text-transform: uppercase;
-    padding: 0;
-    background-color: transparent;
-}
 
 
 /* La section home a une couleur par défaut et une transition lisse */
@@ -1302,4 +1336,37 @@ html, body {
   .portfolio--video.is-project-open .bg-video-wrap {
     opacity: 0 !important;
   }
+}
+
+/* FIX: CTA toujours lisible + taille */
+.project_cta { 
+  color: var(--fg) !important; 
+}
+
+.btn.view_site{
+  color: inherit !important;     /* <-- important */
+  padding: .9rem 1.2rem;
+  min-height: 44px;
+  line-height: 1;
+}
+
+
+/* le texte du marquee hérite bien */
+.btn.view_site .marquee_track,
+.btn.view_site .marquee_item{
+  color: inherit !important;
+}
+
+.btn.view_site{
+  position: relative;
+}
+.btn.view_site .marquee_track{
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}
+.btn.view_site .marquee_item{
+  display: inline-block;
 }

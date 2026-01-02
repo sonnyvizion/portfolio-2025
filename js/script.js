@@ -164,7 +164,7 @@ function setHash(mode, slug = '', replace = false) {
     };
   }
 
-function buildProjectSlides(mediaList, altBase = 'project media') {
+  function buildProjectSlides(mediaList, altBase = 'project media') {
     return (mediaList || []).map(src => {
       const trimmed = (src || '').trim();
       const low = trimmed.toLowerCase();
@@ -177,8 +177,6 @@ function buildProjectSlides(mediaList, altBase = 'project media') {
         low.includes('video');
 
       if (isVideo) {
-        // Note le style pointer-events: none sur la vidéo
-        // Cela force le clic à se faire sur le <a> parent
         return `
           <a class="slide" href="#" tabindex="-1">
             <video class="project-video" autoplay muted loop playsinline style="pointer-events: none; width: 100%; height: 100%; object-fit: cover;">
@@ -447,26 +445,23 @@ function buildProjectSlides(mediaList, altBase = 'project media') {
     function openLightboxVideo(src) {
       if (!lightbox || !lightboxContent) return;
       lightboxContent.innerHTML = '';
-      
+
       const video = document.createElement('video');
       video.className = 'lightbox__media';
-      
+
       const source = document.createElement('source');
       source.src = src;
       source.type = 'video/mp4';
       video.appendChild(source);
 
-      // --- LOGIQUE WEB vs FILMMAKER ---
       const isFilmmaker = document.body.dataset.mode === 'video';
 
       if (isFilmmaker) {
-        // Mode Filmmaker : Contrôles activés
         video.controls = true;
-        video.autoplay = true; // On tente l'autoplay
-        video.muted = false;   // Avec le son (si le navigateur l'autorise)
+        video.autoplay = true;
+        video.muted = false;
         video.loop = false;
       } else {
-        // Mode Web : Boucle muette décorative
         video.controls = false;
         video.autoplay = true;
         video.muted = true;
@@ -508,10 +503,8 @@ function buildProjectSlides(mediaList, altBase = 'project media') {
         let bg = slide.dataset.color || baseBG;
         let fg = slide.dataset.fg || autoContrast(bg);
 
-        // FX (rougail/cards)
         playEffectForSlide(slide, targetSectionEl || homeView);
 
-        // Holora force noir/blanc
         if (isHoloraSlide(slide)) { bg = '#000000'; fg = '#ffffff'; }
 
         setTheme(bg, fg);
@@ -561,6 +554,7 @@ function buildProjectSlides(mediaList, altBase = 'project media') {
       return { title, color, fg, href, url, images, p1, p2 };
     }
 
+    // ✅ MODIF 1: fillProjectView ne fait PLUS l'init marquee (juste href)
     function fillProjectView(data) {
       if (projectTitle) projectTitle.textContent = data.title || '—';
 
@@ -571,32 +565,36 @@ function buildProjectSlides(mediaList, altBase = 'project media') {
       }
 
       if (heroProject) {
-        // Récupère la couleur du slide, ou noir par défaut
-        const bg = data.color || '#000000'; 
+        const bg = data.color || '#000000';
         const fg = (data.fg && data.fg.trim()) || autoContrast(bg);
 
-        // Applique les couleurs aux variables CSS
         heroProject.style.setProperty('--bg', bg);
         heroProject.style.setProperty('--fg', fg);
-        
-        // ✅ C'EST CETTE LIGNE QUI FAIT MARCHER LE FOND UNI :
-        projectView.style.setProperty('--bg', bg); 
+
+        projectView.style.setProperty('--bg', bg);
         projectView.style.setProperty('--fg', fg);
 
         document.documentElement.style.setProperty('--cursor-color', fg);
       }
 
-      // ... (Reste de la fonction inchangé : gestion des images du slider) ...
       if (projectTrack) {
         projectTrack.innerHTML = buildProjectSlides(data.images, `${data.title} — image`);
+
         if (typeof gsap !== 'undefined') {
-          gsap.set(projectTrack.querySelectorAll('.slide'), { opacity: 0, y: 12 });
-          gsap.to(projectTrack.querySelectorAll('.slide'), {
-            opacity: 1, y: 0, duration: 0.5, stagger: 0.06, delay: 0.05, ease: "power2.out"
+          const slides = projectTrack.querySelectorAll('.slide');
+          gsap.set(slides, { opacity: 0, y: 12 });
+          gsap.to(slides, {
+            opacity: 1,
+            y: 0,
+            duration: 0.5,
+            stagger: 0.06,
+            delay: 0.05,
+            ease: "power2.out"
           });
         }
       }
 
+      // ✅ bouton: seulement href ici
       const btn = projectView.querySelector('.btn.view_site');
       if (btn) btn.href = (data.url && data.url !== '') ? data.url : '#';
     }
@@ -604,26 +602,35 @@ function buildProjectSlides(mediaList, altBase = 'project media') {
     // -------- Navigation between views --------
     let _isOpeningFromHash = false;
 
+    // ✅ MODIF 2: init marquee APRES projectView.hidden = false
     async function goToProjectFromSlide(slideEl, { updateHash = true } = {}) {
       const data = parseSlideData(slideEl);
+
+      // remplit contenu
       fillProjectView(data);
 
+      // rend visible
       projectView.hidden = false;
+
+      // ✅ init/recalc marquee quand visible (double RAF = ultra safe)
+      const btn = projectView.querySelector('.btn.view_site');
+      if (btn && window._initCTAMarquee) {
+        window._initCTAMarquee(btn);
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          if (btn._marqueeRecalc) btn._marqueeRecalc();
+        }));
+      }
 
       root.classList.add('is-project-open');
 
-      // Force le navigateur à recalculer la taille avant de lancer l'anim
-      void appRail.offsetWidth; 
+      void appRail.offsetWidth;
 
       if (typeof gsap !== 'undefined') {
-        // CORRECTION ULTIME : On monte de la hauteur exacte de l'écran en pixels
         await gsap.to(appRail, { y: -window.innerHeight, duration: 1.0, ease: "power3.inOut" });
       } else {
         appRail.style.transform = `translateY(${-window.innerHeight}px)`;
       }
-      
 
-      // hash = mode:slug
       if (updateHash && data.href) {
         const mode = (document.body.dataset.mode === 'video') ? 'video' : 'web';
         const slug = String(data.href).replace(/^\//,'').replace(/^#/,'');
@@ -640,22 +647,18 @@ function buildProjectSlides(mediaList, altBase = 'project media') {
     }
 
     async function backToHome({ updateHash = true } = {}) {
-      
-      // 1. On désactive le mode "Projet Ouvert" (Le CSS remet l'opacité à 1)
       root.classList.remove('is-project-open');
 
-      // ✅ CORRECTION : On force la vidéo à relancer la lecture
       const bgVideo = root.querySelector('.bg-video-wrap video');
-      if (bgVideo) {
-        bgVideo.play().catch(() => { /* ignore erreur si déjà en lecture */ });
-      }
+      if (bgVideo) bgVideo.play().catch(() => {});
 
       if (typeof gsap !== 'undefined') {
-        // Retour à 0 (Animation du rail vers le bas)
         await gsap.to(appRail, { y: 0, duration: 1.0, ease: "power3.inOut" });
       } else {
         appRail.style.transform = 'translateY(0px)';
       }
+
+
 
       projectView.hidden = true;
 
@@ -664,9 +667,7 @@ function buildProjectSlides(mediaList, altBase = 'project media') {
         setHash(mode, '', true);
       }
 
-      // Reset couleurs de base (Important pour le nettoyage)
       homeView.style.backgroundColor = homeBaseBG;
-      // On s'assure que la vue projet redevient transparente pour la prochaine ouverture
       projectView.style.backgroundColor = 'transparent';
     }
 
@@ -683,7 +684,6 @@ function buildProjectSlides(mediaList, altBase = 'project media') {
       const slide = e.target.closest('.slide');
       if (!slide || !homeSlider.contains(slide)) return;
 
-      // ignore clones for routing
       if (slide.dataset.clone === '1') {
         e.preventDefault();
         return;
@@ -697,24 +697,17 @@ function buildProjectSlides(mediaList, altBase = 'project media') {
 
     if (projectTrack && lightbox) {
       projectTrack.addEventListener('click', (e) => {
-        // 1. On cherche le conteneur principal (la slide)
         const slide = e.target.closest('.slide');
-        if (!slide) return; // Si on clique à côté, on ne fait rien
-
-        // 2. On empêche le rechargement de page ou le saut (href="#")
+        if (!slide) return;
         e.preventDefault();
 
-        // 3. On regarde ce qu'il y a dans la slide
         const vid = slide.querySelector('video');
         const img = slide.querySelector('img');
 
-        // Cas VIDÉO
         if (vid) {
           const src = vid.currentSrc || vid.src || (vid.querySelector('source')?.src) || '';
           if (src) openLightboxVideo(src);
-        } 
-        // Cas IMAGE
-        else if (img) {
+        } else if (img) {
           openLightboxImage(img.src, img.alt || '');
         }
       });
@@ -727,7 +720,6 @@ function buildProjectSlides(mediaList, altBase = 'project media') {
     }
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeLightbox(); });
 
-    // loop infini mobile
     if (isTouchOrSmall) {
       window.addEventListener('load', () => initInfiniteSlider(homeSlider, homeTrack));
     }
@@ -739,7 +731,6 @@ function buildProjectSlides(mediaList, altBase = 'project media') {
 
     function findSlideBySlug(slug) {
       if (!slug) return null;
-      // uniquement slides NON clones
       const selector = `.sliders_works .slide:not([data-clone="1"])[href="${slug}"], .sliders_works .slide:not([data-clone="1"])[href="/${slug}"], .sliders_works .slide:not([data-clone="1"])[href="#${slug}"]`;
       return root.querySelector(selector);
     }
@@ -749,7 +740,6 @@ function buildProjectSlides(mediaList, altBase = 'project media') {
       if (mode !== portfolioMode()) return;
 
       if (!slug) {
-        // hash = #web ou #video => home
         backToHome({ updateHash: false });
         return;
       }
@@ -757,17 +747,14 @@ function buildProjectSlides(mediaList, altBase = 'project media') {
       const slide = findSlideBySlug(slug);
       if (!slide) return;
 
-      // ouvre sans réécrire le hash (sinon boucle)
       goToProjectFromSlide(slide, { updateHash: false });
     }
 
-    // au load : si on a #mode:slug -> ouvre
     window.addEventListener('load', () => {
       const { slug } = parseAppHash();
       if (slug) syncFromHash();
     });
 
-    // hashchange/back/forward
     window.addEventListener('hashchange', () => {
       if (_isOpeningFromHash) return;
       syncFromHash();
@@ -848,23 +835,32 @@ function buildProjectSlides(mediaList, altBase = 'project media') {
 })();
 
 /* =========================================================
-   CTA "View site" : marquee
+   CTA "View site" : marquee (FIX DEFINITIF)
 ========================================================= */
 (() => {
   if (typeof gsap === "undefined") return;
 
-  const debounce = (fn, wait = 150) => {
-    let t;
-    return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), wait); };
-  };
-
   function initCTA(btn) {
-    if (!btn || btn._marqueeInit) return;
-    btn._marqueeInit = true;
+    if (!btn) return;
 
-    const baseText = (btn.getAttribute('aria-label') || btn.textContent || 'VIEW SITE').toUpperCase();
+    // ✅ vitesse lisible par défaut
+    const speed = Number(btn.dataset.speed || 18); // <<<<<< ICI (plus petit = plus lent)
+
+    // Si déjà initialisé -> on force juste un recalc + on relance le ticker si besoin
+    if (btn._marqueeInit) {
+      btn._marqueeSpeed = speed;
+      if (btn._marqueeRecalc) btn._marqueeRecalc();
+      if (btn._marqueeResume) btn._marqueeResume();
+      return;
+    }
+
+    btn._marqueeInit = true;
+    btn._marqueeSpeed = speed;
+
+    const baseText = (btn.getAttribute('aria-label') || btn.textContent || 'LIVE SITE').toUpperCase();
     const sep = ' — ';
 
+    // construit la structure
     btn.textContent = '';
     const track = document.createElement('span');
     track.className = 'marquee_track';
@@ -877,38 +873,61 @@ function buildProjectSlides(mediaList, altBase = 'project media') {
       return el;
     };
 
+    // ✅ remplissage (ne dépend pas du width)
     function fillTrack() {
       track.innerHTML = '';
-      track.appendChild(makeItem());
-      while (track.scrollWidth < btn.clientWidth * 3) track.appendChild(makeItem());
-      track.innerHTML += track.innerHTML;
+      for (let i = 0; i < 18; i++) track.appendChild(makeItem());
+      track.innerHTML += track.innerHTML; // double pour loop
     }
 
     let pos = 0;
-    let speed = Number(btn.dataset.speed || 90);
-    let distance;
-    let running = true;
+    let distance = 0;
     let slowFactor = 1;
+    let running = true;
 
     function recalc() {
+      // si encore hidden => on retente
+      if (btn.clientWidth <= 0) {
+        requestAnimationFrame(recalc);
+        return;
+      }
+
       fillTrack();
       distance = track.scrollWidth / 2;
-      pos = (pos % -distance) || 0;
+
+      // fallback safety
+      if (!distance) {
+        btn.textContent = baseText;
+        return;
+      }
+
+      pos = 0;
       gsap.set(track, { x: pos });
     }
 
+    // ✅ Remplace l'ancienne fonction tick par celle-ci :
+const tick = (_t, delta) => {
+  if (!running || !distance) return;
+
+  // On utilise une vitesse très basse (0.5 à 1.5)
+  // On divise par 10 pour être sûr que même avec un delta élevé, ça reste lent
+  const baseSpeed = (btn._marqueeSpeed || 2) / 10; 
+  
+  pos -= baseSpeed * slowFactor; 
+
+  if (pos <= -distance) pos += distance;
+  gsap.set(track, { x: pos });
+};
+
+    // ✅ SUPER IMPORTANT : enlever un ancien ticker si un existe (évite vitesse x100)
+    if (btn._tickerFn) gsap.ticker.remove(btn._tickerFn);
+    btn._tickerFn = tick;
+    gsap.ticker.add(btn._tickerFn);
+
+    // ✅ on calcule au moment où c’est visible
     requestAnimationFrame(() => requestAnimationFrame(recalc));
 
-    const tick = (_time, deltaMs) => {
-      if (!running || !distance) return;
-      const delta = (deltaMs || 16.7) / 1000;
-      pos -= speed * slowFactor * delta;
-      if (pos <= -distance) pos += distance;
-      gsap.set(track, { x: pos });
-    };
-
-    gsap.ticker.add(tick);
-
+    // hover slow
     const slow = () => { slowFactor = 0.25; };
     const norm = () => { slowFactor = 1; };
 
@@ -917,20 +936,30 @@ function buildProjectSlides(mediaList, altBase = 'project media') {
     btn.addEventListener('focusin', slow);
     btn.addEventListener('focusout', norm);
 
-    const onResize = debounce(recalc, 150);
-    window.addEventListener('resize', onResize);
+    // helpers (utilisés par ton fillProjectView)
+    btn._marqueeRecalc = recalc;
 
-    btn._marqueeRecalc  = recalc;
+    btn._marqueePause = () => { running = false; };
+    btn._marqueeResume = () => { running = true; };
+
     btn._marqueeDestroy = () => {
       running = false;
-      gsap.ticker.remove(tick);
-      window.removeEventListener('resize', onResize);
+      if (btn._tickerFn) {
+        gsap.ticker.remove(btn._tickerFn);
+        btn._tickerFn = null;
+      }
     };
   }
 
+  // expose
   window._initCTAMarquee = initCTA;
-  document.querySelectorAll('.btn.view_site').forEach(initCTA);
+
+  // init au load (au cas où)
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.btn.view_site').forEach(initCTA);
+  });
 })();
+
 
 /* =========================================================
    Curseur custom
@@ -1054,23 +1083,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const ctx = canvas.getContext('2d');
 
-  // CONFIGURATION
   const config = {
-    baseRadius: 300,    // Taille de base AU REPOS (un peu plus gros qu'avant)
-    minRadius: 150,     // Taille minimale quand on va très vite
-    shrinkFactor: 0.5,  // Force de la réduction (plus haut = rétrécit plus vite)
-    noiseScale: 2.2,    // Complexité des formes
-    noiseSpeed: 0.005,  // Vitesse du bouillonnement
-    viscosity: 0.09     // Inertie
+    baseRadius: 300,
+    minRadius: 150,
+    shrinkFactor: 0.5,
+    noiseScale: 2.2,
+    noiseSpeed: 0.005,
+    viscosity: 0.09
   };
 
   let width, height;
   let time = 0;
-  
+
   let target = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
   let current = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
 
-  // --- Simplex Noise Simplifié ---
   const noise = (function() {
     const p = new Uint8Array(512);
     const perm = new Uint8Array(512);
@@ -1100,71 +1127,59 @@ document.addEventListener('DOMContentLoaded', () => {
     };
   })();
 
-  // RESIZE
   function resize() {
     width = window.innerWidth;
     height = window.innerHeight;
     canvas.width = width;
     canvas.height = height;
     if (width < 768) {
-        config.baseRadius = 180;
-        config.minRadius = 100;
+      config.baseRadius = 180;
+      config.minRadius = 100;
     } else {
-        config.baseRadius = Math.max(300, width * 0.22);
-        config.minRadius = config.baseRadius * 0.5; // Taille min = 50% de la taille max
+      config.baseRadius = Math.max(300, width * 0.22);
+      config.minRadius = config.baseRadius * 0.5;
     }
   }
   window.addEventListener('resize', resize);
   resize();
 
-  // MOUSE MOVE
   window.addEventListener('mousemove', (e) => {
     target.x = e.clientX;
     target.y = e.clientY;
   });
 
-  // RENDER LOOP
   function render() {
-    // 1. Calcul de l'inertie de position
     const dx = target.x - current.x;
     const dy = target.y - current.y;
     current.x += dx * config.viscosity;
     current.y += dy * config.viscosity;
-    
+
     time += config.noiseSpeed;
 
-    // 2. NOUVEAU : Calcul de la taille dynamique basée sur la vitesse
-    // La "tension" est la distance qui reste à parcourir. Grande distance = grande vitesse.
-    const tension = Math.hypot(dx, dy); 
-    // On calcule de combien on doit rétrécir
+    const tension = Math.hypot(dx, dy);
     const shrinkage = tension * config.shrinkFactor;
-    // On applique le rétrécissement en s'assurant de ne pas descendre sous le rayon minimum
     let dynamicRadius = Math.max(config.minRadius, config.baseRadius - shrinkage);
 
-    // 3. Dessin du fond noir
     ctx.globalCompositeOperation = 'source-over';
     ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, width, height);
 
-    // 4. Dessin de la gomme (blob)
     ctx.globalCompositeOperation = 'destination-out';
-    
+
     ctx.beginPath();
     const samples = 110;
     const angleStep = (Math.PI * 2) / samples;
 
     for (let i = 0; i <= samples; i++) {
       const angle = i * angleStep;
-      
-      // Bruit un peu plus nerveux quand ça bouge vite (optionnel)
+
       const noiseStrength = time + (tension * 0.001);
 
       const noiseX = Math.cos(angle) * config.noiseScale + noiseStrength;
       const noiseY = Math.sin(angle) * config.noiseScale + noiseStrength;
-      const n = noise(noiseX, noiseY, time * 0.6); 
-      
-      // Variation de rayon (plus la taille est petite, moins on fait de variation pour éviter les bugs)
-      const variationAmount = dynamicRadius * 0.3; 
+      const n = noise(noiseX, noiseY, time * 0.6);
+
+      const variationAmount = dynamicRadius * 0.3;
       const finalRadius = dynamicRadius + (n * variationAmount);
 
       const x = current.x + Math.cos(angle) * finalRadius;
@@ -1173,14 +1188,13 @@ document.addEventListener('DOMContentLoaded', () => {
       if (i === 0) ctx.moveTo(x, y);
       else ctx.lineTo(x, y);
     }
-    
+
     ctx.closePath();
     ctx.fill();
 
     requestAnimationFrame(render);
   }
 
-  // Flou CSS plus fort pour un aspect plus liquide
   canvas.style.filter = 'blur(50px)';
   canvas.style.transform = 'scale(1.15)';
 
