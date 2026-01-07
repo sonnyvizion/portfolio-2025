@@ -319,26 +319,47 @@ h1, nav {
 /* La vue projet doit être le repère */
 .view--project{ position: relative; }
 
-/* CTA juste AU-DESSUS du slider (desktop : slider = 35vh) */
-.project_cta{
+/* Positionnement standard pour Desktop */
+.project_cta {
   position: absolute;
-  left: 0;
-  right: 0;
-  bottom: calc(35vh + 1.2vw);
-  z-index: 20;
-  display: flex;
-  justify-content: center;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(35vh + 30px);
+  z-index: 9999;
   pointer-events: none;
-  color: inherit; 
-    text-transform: uppercase;
-    padding: 0;
-    background-color: transparent;
 }
-.project_cta .btn.view_site{ pointer-events: auto; }
 
-/* Tablet/Mobile : slider = 40vh chez toi */
-@media (max-width: 1024px){
-  .project_cta{ bottom: calc(40vh + 1rem); }
+.btn.view_site {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 24px;
+  border-radius: 100px;
+  background-color: transparent;
+  min-width: 160px;
+  color: inherit !important; /* Force la couleur du thème (blanc ou noir) */
+}
+
+/* --- FIX MOBILE RADICAL --- */
+@media (max-width: 1024px) {
+  .project_cta {
+    position: fixed; /* On le détache du flux pour qu'il ne disparaisse pas */
+    bottom: 50px;    /* On le place en bas de l'écran, bien visible */
+    left: 50%;
+    transform: translateX(-50%);
+    pointer-events: none;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+  }
+
+  .btn.view_site {
+    pointer-events: auto;
+    background-color: var(--bg); /* Donne un fond pour qu'il soit bien visible */
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2); /* Ombre pour le détacher du slider */
+    transform: scale(1.1); /* On le grossit un peu pour le pouce */
+  }
 }
 
 
@@ -1264,7 +1285,6 @@ html, body {
   --mask-y: 50vh;
 }
 
-/* 1. La Vidéo (Tout au fond) */
 .bg-video-wrap {
   position: absolute;
   inset: 0;
@@ -1273,21 +1293,20 @@ html, body {
   pointer-events: none;
 }
 
+/* On ajoute un voile sombre par-dessus la vidéo */
+.bg-video-wrap::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4); /* Ajuste l'opacité ici (0.4 = 40%) */
+  z-index: 1;
+}
+
 .bg-video-wrap video {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  opacity: 1; 
-}
-
-/* 2. Le Canvas (Le masque noir organique) */
-#blob-canvas {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 1; /* Au-dessus de la vidéo... */
-  pointer-events: none; /* ...mais laisse passer les clics ! */
+  opacity: 1;
 }
 
 /* 3. Le Contenu (Textes, Nav - DOIT ÊTRE DEVANT) */
@@ -1369,4 +1388,17 @@ html, body {
 }
 .btn.view_site .marquee_item{
   display: inline-block;
+}
+
+/* Taille normale (ton réglage actuel est 16vw ou 22vw sur mobile) */
+.project_title.title--small {
+  font-size: 10vw; /* On réduit à 10vw au lieu de 16vw */
+  line-height: 110%;
+}
+
+/* Ajustement pour Mobile */
+@media (max-width: 1024px) {
+  .project_title.title--small {
+    font-size: 14vw; /* Un peu plus grand sur mobile pour rester lisible */
+  }
 }

@@ -193,3 +193,19 @@ dist
 .ionide
 
 # End of https://www.toptal.com/developers/gitignore/api/macos,visualstudiocode,node
+*.mp4
+
+# videos too large for github
+video/*.mp4
+
+# Videos
+*.mp4
+
+
+# Videos
+*.mp4
+
+
+# Videos
+video/
+*.mp4

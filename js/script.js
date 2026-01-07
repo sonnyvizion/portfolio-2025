@@ -555,14 +555,28 @@ function setHash(mode, slug = '', replace = false) {
     }
 
     // ✅ MODIF 1: fillProjectView ne fait PLUS l'init marquee (juste href)
-    function fillProjectView(data) {
-      if (projectTitle) projectTitle.textContent = data.title || '—';
 
-      if (projectDesc) {
+    
+    function fillProjectView(data) {
+    // On cherche le titre spécifiquement dans le portfolio parent (root)
+    const titleEl = root.querySelector('.project_title');
+    
+    if (titleEl) {
+        titleEl.textContent = data.title || '—';
+        
+        // On vérifie le texte exact (attention aux majuscules/minuscules)
+        if (data.title.toUpperCase() === "UNE VIE DE MOUCHE") {
+            titleEl.classList.add('title--small');
+        } else {
+            titleEl.classList.remove('title--small');
+        }
+    }
+
+    if (projectDesc) {
         const p1 = data.p1 ? `<p class="project_p1">${data.p1}</p>` : '';
         const p2 = data.p2 ? `<p class="project_p2">${data.p2}</p>` : '';
         projectDesc.innerHTML = p1 + p2;
-      }
+    }
 
       if (heroProject) {
         const bg = data.color || '#000000';
@@ -1073,130 +1087,3 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 })();
 
-/* =========================================================
-   ORGANIC BLOB FLASHLIGHT (Canvas 2D + Noise + Vitesse)
-========================================================= */
-(() => {
-  const videoSection = document.querySelector('.portfolio--video');
-  const canvas = document.getElementById('blob-canvas');
-  if (!videoSection || !canvas) return;
-
-  const ctx = canvas.getContext('2d');
-
-  const config = {
-    baseRadius: 300,
-    minRadius: 150,
-    shrinkFactor: 0.5,
-    noiseScale: 2.2,
-    noiseSpeed: 0.005,
-    viscosity: 0.09
-  };
-
-  let width, height;
-  let time = 0;
-
-  let target = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
-  let current = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
-
-  const noise = (function() {
-    const p = new Uint8Array(512);
-    const perm = new Uint8Array(512);
-    for(let i=0; i<256; i++) p[i] = i;
-    for(let i=0; i<256; i++) {
-      let r = i + ~~(Math.random() * (256 - i));
-      let t = p[i]; p[i] = p[r]; p[r] = t;
-    }
-    for(let i=0; i<512; i++) perm[i] = p[i & 255];
-    function fade(t) { return t * t * t * (t * (t * 6 - 15) + 10); }
-    function lerp(t, a, b) { return a + t * (b - a); }
-    function grad(hash, x, y, z) {
-      const h = hash & 15;
-      const u = h < 8 ? x : y, v = h < 4 ? y : h === 12 || h === 14 ? x : z;
-      return ((h & 1) === 0 ? u : -u) + ((h & 2) === 0 ? v : -v);
-    }
-    return function(x, y, z) {
-      const X = Math.floor(x) & 255, Y = Math.floor(y) & 255, Z = Math.floor(z) & 255;
-      x -= Math.floor(x); y -= Math.floor(y); z -= Math.floor(z);
-      const u = fade(x), v = fade(y), w = fade(z);
-      const A = perm[X] + Y, AA = perm[A] + Z, AB = perm[A + 1] + Z;
-      const B = perm[X + 1] + Y, BA = perm[B] + Z, BB = perm[B + 1] + Z;
-      return lerp(w, lerp(v, lerp(u, grad(perm[AA], x, y, z), grad(perm[BA], x - 1, y, z)),
-                             lerp(u, grad(perm[AB], x, y - 1, z), grad(perm[BB], x - 1, y - 1, z))),
-                     lerp(v, lerp(u, grad(perm[AA + 1], x, y, z - 1), grad(perm[BA + 1], x - 1, y, z - 1)),
-                             lerp(u, grad(perm[AB + 1], x, y - 1, z - 1), grad(perm[BB + 1], x - 1, y - 1, z - 1))));
-    };
-  })();
-
-  function resize() {
-    width = window.innerWidth;
-    height = window.innerHeight;
-    canvas.width = width;
-    canvas.height = height;
-    if (width < 768) {
-      config.baseRadius = 180;
-      config.minRadius = 100;
-    } else {
-      config.baseRadius = Math.max(300, width * 0.22);
-      config.minRadius = config.baseRadius * 0.5;
-    }
-  }
-  window.addEventListener('resize', resize);
-  resize();
-
-  window.addEventListener('mousemove', (e) => {
-    target.x = e.clientX;
-    target.y = e.clientY;
-  });
-
-  function render() {
-    const dx = target.x - current.x;
-    const dy = target.y - current.y;
-    current.x += dx * config.viscosity;
-    current.y += dy * config.viscosity;
-
-    time += config.noiseSpeed;
-
-    const tension = Math.hypot(dx, dy);
-    const shrinkage = tension * config.shrinkFactor;
-    let dynamicRadius = Math.max(config.minRadius, config.baseRadius - shrinkage);
-
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.fillStyle = '#000000';
-    ctx.fillRect(0, 0, width, height);
-
-    ctx.globalCompositeOperation = 'destination-out';
-
-    ctx.beginPath();
-    const samples = 110;
-    const angleStep = (Math.PI * 2) / samples;
-
-    for (let i = 0; i <= samples; i++) {
-      const angle = i * angleStep;
-
-      const noiseStrength = time + (tension * 0.001);
-
-      const noiseX = Math.cos(angle) * config.noiseScale + noiseStrength;
-      const noiseY = Math.sin(angle) * config.noiseScale + noiseStrength;
-      const n = noise(noiseX, noiseY, time * 0.6);
-
-      const variationAmount = dynamicRadius * 0.3;
-      const finalRadius = dynamicRadius + (n * variationAmount);
-
-      const x = current.x + Math.cos(angle) * finalRadius;
-      const y = current.y + Math.sin(angle) * finalRadius;
-
-      if (i === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    }
-
-    ctx.closePath();
-    ctx.fill();
-
-    requestAnimationFrame(render);
-  }
-
-  canvas.style.filter = 'blur(50px)';
-  canvas.style.transform = 'scale(1.15)';
-
-  render();
-})();
